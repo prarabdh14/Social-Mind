@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
+import axios from 'axios';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -283,6 +284,96 @@ app.get('/users/profile', authenticateToken, async (req: AuthenticatedRequest, r
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ message: 'Error getting profile' });
+  }
+});
+
+// YouTube OAuth endpoints
+app.get('/auth/youtube', authenticateToken, (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const redirectUri = process.env.YOUTUBE_REDIRECT_URI;
+  const scope = 'https://www.googleapis.com/auth/youtube.readonly';
+  if (!clientId || !redirectUri) {
+    return res.status(500).json({ message: 'Missing Google client ID or redirect URI' });
+  }
+  const oauthUrl =
+    `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${encodeURIComponent(clientId)}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&response_type=code` +
+    `&scope=${encodeURIComponent(scope)}` +
+    `&access_type=offline` +
+    `&prompt=consent`;
+  res.redirect(oauthUrl);
+});
+
+app.get('/auth/youtube/callback', authenticateToken, async (req, res) => {
+  const code = req.query.code as string;
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const redirectUri = process.env.YOUTUBE_REDIRECT_URI;
+  const userId = (req as any).id as string; // Fix type error
+
+  if (!code || !userId) {
+    return res.status(400).json({ message: 'Missing code or user' });
+  }
+  if (!clientId || !clientSecret || !redirectUri) {
+    return res.status(500).json({ message: 'Missing Google OAuth environment variables' });
+  }
+
+  try {
+    // Exchange code for tokens
+    const tokenRes = await axios.post('https://oauth2.googleapis.com/token', {
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+    });
+    const { access_token, refresh_token } = tokenRes.data;
+
+    // Fetch YouTube channel info
+    const channelRes = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
+      params: {
+        part: 'snippet',
+        mine: 'true',
+      },
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+      },
+    });
+    const channel = channelRes.data.items[0];
+    const username = channel?.snippet?.title || 'YouTube User';
+    const profilePicture = channel?.snippet?.thumbnails?.default?.url || null;
+
+    // Store in SocialMediaAccount
+    await prisma.socialMediaAccount.upsert({
+      where: {
+        userId_platform: {
+          userId,
+          platform: 'YouTube',
+        },
+      },
+      update: {
+        username,
+        profilePicture,
+        accessToken: access_token,
+        refreshToken: refresh_token,
+      },
+      create: {
+        userId,
+        platform: 'YouTube',
+        username,
+        profilePicture,
+        accessToken: access_token,
+        refreshToken: refresh_token,
+      },
+    });
+
+    // Redirect or respond
+    res.redirect('/dashboard'); // Or send a success message
+  } catch (error: any) {
+    console.error('YouTube OAuth error:', error);
+    res.status(500).json({ message: 'YouTube OAuth failed', error: error?.response?.data || error.message });
   }
 });
 
