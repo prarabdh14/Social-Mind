@@ -5,6 +5,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import axios from 'axios';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -77,7 +80,7 @@ const authenticateToken = async (req: AuthenticatedRequest, res: Response, next:
       return res.status(401).json({ message: 'User not found' });
     }
 
-    req.id = user.id;
+    req.user = user;
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Invalid token' });
@@ -287,6 +290,94 @@ app.get('/users/profile', authenticateToken, async (req: AuthenticatedRequest, r
   }
 });
 
+// ------------------- Scheduled Posts Endpoints -------------------
+
+// Create a new scheduled post
+app.post('/posts', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { content, imageUrl, platform, status, scheduledAt } = req.body;
+    if (!content || !platform || !scheduledAt) {
+      return res.status(400).json({ message: 'content, platform, and scheduledAt are required' });
+    }
+    const post = await prisma.post.create({
+      data: {
+        content,
+        imageUrl,
+        platform,
+        status: status || 'SCHEDULED',
+        scheduledAt: new Date(scheduledAt),
+        userId,
+      },
+    });
+    res.status(201).json(post);
+  } catch (error) {
+    console.error('Create post error:', error);
+    res.status(500).json({ message: 'Error creating post' });
+  }
+});
+
+// Get all posts for the authenticated user
+app.get('/posts', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const posts = await prisma.post.findMany({
+      where: { userId },
+      orderBy: { scheduledAt: 'desc' },
+    });
+    res.json(posts);
+  } catch (error) {
+    console.error('Get posts error:', error);
+    res.status(500).json({ message: 'Error fetching posts' });
+  }
+});
+
+// Update a scheduled post
+app.put('/posts/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+    const { content, imageUrl, platform, status, scheduledAt } = req.body;
+    // Only allow update if the post belongs to the user
+    const post = await prisma.post.findUnique({ where: { id } });
+    if (!post || post.userId !== userId) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    const updated = await prisma.post.update({
+      where: { id },
+      data: {
+        content,
+        imageUrl,
+        platform,
+        status,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
+      },
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error('Update post error:', error);
+    res.status(500).json({ message: 'Error updating post' });
+  }
+});
+
+// Delete a scheduled post
+app.delete('/posts/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+    // Only allow delete if the post belongs to the user
+    const post = await prisma.post.findUnique({ where: { id } });
+    if (!post || post.userId !== userId) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    await prisma.post.delete({ where: { id } });
+    res.status(204).send();
+  } catch (error) {
+    console.error('Delete post error:', error);
+    res.status(500).json({ message: 'Error deleting post' });
+  }
+});
+
 // YouTube OAuth endpoints
 app.get('/auth/youtube', authenticateToken, (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -374,6 +465,61 @@ app.get('/auth/youtube/callback', authenticateToken, async (req, res) => {
   } catch (error: any) {
     console.error('YouTube OAuth error:', error);
     res.status(500).json({ message: 'YouTube OAuth failed', error: error?.response?.data || error.message });
+  }
+});
+
+const upload = multer({ dest: 'uploads/' });
+
+// Dummy Gemini API integration (to be implemented)
+async function getGeminiCaption(filePath: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY not set');
+  // Read file and encode as base64
+  const fileData = fs.readFileSync(filePath);
+  const base64 = fileData.toString('base64');
+  // Gemini API endpoint (update if needed)
+  const url = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=' + apiKey;
+  // Prepare request body (update if Gemini expects a different format)
+  const requestBody = {
+    contents: [
+      {
+        parts: [
+          {
+            inlineData: {
+              mimeType: 'image/jpeg', // or 'video/mp4' if video
+              data: base64,
+            },
+          },
+        ],
+      },
+    ],
+  };
+  try {
+    const response = await axios.post(url, requestBody, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    // Extract caption from Gemini response (update if needed)
+    const caption = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 'No caption generated.';
+    return caption;
+  } catch (error: any) {
+    console.error('Gemini API error:', error?.response?.data || error.message);
+    throw new Error('Failed to get caption from Gemini API');
+  }
+}
+
+// AI Caption endpoint
+app.post('/ai/caption', upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+    const filePath = req.file.path;
+    const caption = await getGeminiCaption(filePath);
+    // Optionally delete the file after processing
+    fs.unlink(filePath, () => {});
+    res.json({ caption });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to generate caption' });
   }
 });
 

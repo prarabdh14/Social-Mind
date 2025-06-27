@@ -11,7 +11,7 @@ const api = axios.create({
 });
 
 // Add request interceptor to add auth token
-api.interceptors.request.use((config) => {
+api.interceptors.request.use((config: any) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -21,8 +21,8 @@ api.interceptors.request.use((config) => {
 
 // Add response interceptor to handle token expiration
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response: any) => response,
+  (error: any) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       window.location.href = '/';
@@ -71,6 +71,26 @@ export const userService = {
 
   async getProfile() {
     const response = await api.get('/users/profile');
+    return response.data;
+  },
+};
+
+// ------------------- Scheduled Posts Service -------------------
+export const postService = {
+  async getPosts() {
+    const response = await api.get('/posts');
+    return response.data;
+  },
+  async createPost(data: any) {
+    const response = await api.post('/posts', data);
+    return response.data;
+  },
+  async updatePost(id: any, data: any) {
+    const response = await api.put(`/posts/${id}`, data);
+    return response.data;
+  },
+  async deletePost(id: any) {
+    const response = await api.delete(`/posts/${id}`);
     return response.data;
   },
 };

@@ -51,6 +51,7 @@ model User {
   organizationId    String?
   preferences       UserPreference?
   socialAccounts    SocialMediaAccount[]
+  posts             Post[]
 }
 
 model Organization {
@@ -93,4 +94,28 @@ model SocialMediaAccount {
   userId          String
 
   @@unique([userId, platform])
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  POSTED
+  FAILED
+  NEEDS_REVIEW
+}
+
+model Post {
+  id            String     @id @default(uuid())
+  content       String
+  imageUrl      String?
+  platform      String
+  status        PostStatus @default(DRAFT)
+  scheduledAt   DateTime
+  publishedAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relations
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
 }
