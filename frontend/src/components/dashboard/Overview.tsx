@@ -1,7 +1,23 @@
 import React from 'react';
 
+const YOUTUBE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID';
+const YOUTUBE_REDIRECT_URI = import.meta.env.VITE_YOUTUBE_REDIRECT_URI || 'http://localhost:3000/auth/youtube/callback';
+const YOUTUBE_SCOPE = 'https://www.googleapis.com/auth/youtube.readonly';
+
 const handleConnect = (platform: string) => {
-  // Placeholder for OAuth logic
+  if (platform === 'YouTube') {
+    const oauthUrl =
+      `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${encodeURIComponent(YOUTUBE_CLIENT_ID)}` +
+      `&redirect_uri=${encodeURIComponent(YOUTUBE_REDIRECT_URI)}` +
+      `&response_type=code` +
+      `&scope=${encodeURIComponent(YOUTUBE_SCOPE)}` +
+      `&access_type=offline` +
+      `&prompt=consent`;
+    window.location.href = oauthUrl;
+    return;
+  }
+  // Placeholder for other OAuth logic
   alert(`Connect to ${platform} (OAuth flow placeholder)`);
 };
 
@@ -28,6 +44,12 @@ const Overview: React.FC = () => (
           className="px-6 py-2 rounded-lg bg-gradient-to-r from-blue-400 to-cyan-400 text-white font-bold shadow hover:opacity-90 transition"
         >
           Connect Twitter
+        </button>
+        <button
+          onClick={() => handleConnect('YouTube')}
+          className="px-6 py-2 rounded-lg bg-gradient-to-r from-red-600 to-red-400 text-white font-bold shadow hover:opacity-90 transition"
+        >
+          Connect YouTube
         </button>
       </div>
     </section>
