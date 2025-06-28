@@ -5,7 +5,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
-import { Calendar, Clock, TrendingUp, Users } from 'lucide-react';
+import { Calendar, Clock, TrendingUp, Users, Check, Plus } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 import { POSTING_TIMES, getPlatformTimes } from '../utils/postingTimes';
 
@@ -27,8 +27,11 @@ const ContentPlanning: React.FC = () => {
   const [description, setDescription] = useState('');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [planType, setPlanType] = useState<'2days' | '3days' | '5days' | '1week' | '2weeks' | '3weeks'>('1week');
+  const [startDate, setStartDate] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [contentPlan, setContentPlan] = useState<ContentPlan[]>([]);
+  const [isAddingToCalendar, setIsAddingToCalendar] = useState<{[key: string]: boolean}>({});
+  const [addedToCalendar, setAddedToCalendar] = useState<{[key: string]: boolean}>({});
   const { toast } = useToast();
 
   const contentTypes = [
@@ -82,10 +85,10 @@ const ContentPlanning: React.FC = () => {
   };
 
   const generateContentPlan = async () => {
-    if (!contentType || !description || selectedPlatforms.length === 0) {
+    if (!contentType || !description || selectedPlatforms.length === 0 || !startDate) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields and select at least one platform.",
+        description: "Please fill in all required fields including the start date.",
         variant: "destructive",
       });
       return;
@@ -104,6 +107,7 @@ const ContentPlanning: React.FC = () => {
           description,
           platforms: selectedPlatforms,
           planType,
+          startDate,
         }),
       });
 
@@ -127,6 +131,56 @@ const ContentPlanning: React.FC = () => {
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const addToCalendar = async (dayPlan: ContentPlan, post: any, postIndex: number) => {
+    const key = `${dayPlan.day}-${postIndex}`;
+    setIsAddingToCalendar(prev => ({ ...prev, [key]: true }));
+    
+    try {
+      // Calculate the scheduled date based on start date and day number
+      const startDateObj = new Date(startDate);
+      const scheduledDate = new Date(startDateObj);
+      scheduledDate.setDate(startDateObj.getDate() + dayPlan.day - 1);
+      
+      // Set a default time (e.g., 10 AM)
+      scheduledDate.setHours(10, 0, 0, 0);
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/posts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          content: `${post.contentIdea}\n\n${post.description}\n\nHashtags: ${post.hashtags.join(' ')}\n\nTip: ${post.tips}`,
+          platform: post.platform.toLowerCase(),
+          scheduledAt: scheduledDate.toISOString(),
+          status: 'SCHEDULED',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add to calendar');
+      }
+
+      // Mark this content as added to calendar
+      setAddedToCalendar(prev => ({ ...prev, [key]: true }));
+
+      toast({
+        title: "Added to Calendar!",
+        description: `${post.contentIdea} has been scheduled for ${scheduledDate.toLocaleDateString()}`,
+      });
+    } catch (error) {
+      console.error('Error adding to calendar:', error);
+      toast({
+        title: "Failed to Add",
+        description: "Failed to add content to calendar. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingToCalendar(prev => ({ ...prev, [key]: false }));
     }
   };
 
@@ -253,6 +307,18 @@ const ContentPlanning: React.FC = () => {
               </Select>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="start-date">Start Date *</Label>
+              <input
+                id="start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+
             <Button 
               onClick={generateContentPlan} 
               disabled={isGenerating}
@@ -324,6 +390,40 @@ const ContentPlanning: React.FC = () => {
                             <div className="bg-blue-50 dark:bg-blue-950/20 p-2 rounded text-xs">
                               <span className="font-medium text-blue-700 dark:text-blue-300">💡 Tip:</span>
                               <span className="text-blue-600 dark:text-blue-400 ml-1">{post.tips}</span>
+                            </div>
+
+                            <div className="flex gap-2 mt-3">
+                              {addedToCalendar[`${dayPlan.day}-${postIndex}`] ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled
+                                  className="flex-1 bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-300 dark:border-green-800"
+                                >
+                                  <Check className="mr-2 h-3 w-3" />
+                                  Added to Calendar
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => addToCalendar(dayPlan, post, postIndex)}
+                                  disabled={isAddingToCalendar[`${dayPlan.day}-${postIndex}`]}
+                                  className="flex-1"
+                                >
+                                  {isAddingToCalendar[`${dayPlan.day}-${postIndex}`] ? (
+                                    <>
+                                      <div className="mr-2 h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                      Adding...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Plus className="mr-2 h-3 w-3" />
+                                      Add to Calendar
+                                    </>
+                                  )}
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>

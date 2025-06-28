@@ -22,9 +22,14 @@ interface AuthResponse {
   user: User;
 }
 
-// Add a type for the OTP-required response
-interface OtpRequiredResponse {
-  requireOtp: true;
+interface OTPResponse {
+  requireOtp: boolean;
+}
+
+interface OTPVerificationRequest {
+  email: string;
+  otp: string;
+
 }
 
 class AuthService {
@@ -44,7 +49,9 @@ class AuthService {
     localStorage.removeItem('token');
   }
 
-  async signIn(credentials: SignInCredentials): Promise<AuthResponse | OtpRequiredResponse> {
+
+  async signIn(credentials: SignInCredentials): Promise<AuthResponse | OTPResponse> {
+
     try {
       const response = await fetch(`${API_URL}/auth/signin`, {
         method: 'POST',
@@ -60,10 +67,43 @@ class AuthService {
       }
 
       const data = await response.json();
-      // If OTP is required, return that response
+
+      
+      // Check if OTP is required
       if (data.requireOtp) {
         return { requireOtp: true };
       }
+      
+      // Check for direct login response
+      if (!data.token || !data.user) {
+        throw new Error('Invalid response from server');
+      }
+
+      this.setToken(data.token);
+      return data;
+    } catch (error) {
+      this.clearToken();
+      throw error;
+    }
+  }
+
+  async verifyOTP(otpData: OTPVerificationRequest): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${API_URL}/auth/verify-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(otpData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Invalid OTP');
+      }
+
+      const data = await response.json();
+
       if (!data.token || !data.user) {
         throw new Error('Invalid response from server');
       }
