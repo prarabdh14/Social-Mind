@@ -5,7 +5,6 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { postService, dashboardService } from "../services/api";
 import { Post, DashboardAnalytics, DashboardInsights, SocialMediaAccount } from "../types";
-import PostComposer from "../components/dashboard/PostComposer";
 import { useUser } from "../contexts/UserContext";
 import { 
   TrendingUp, 
@@ -31,8 +30,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingPost, setEditingPost] = useState<Post | null>(null);
 
   const fetchDashboardData = async () => {
     setAnalyticsLoading(true);
@@ -110,29 +107,7 @@ export default function Dashboard() {
   };
 
   const handleCreate = () => {
-    setEditingPost(null);
-    setModalOpen(true);
-  };
-
-  const handleModalClose = () => {
-    setModalOpen(false);
-    setEditingPost(null);
-  };
-
-  const handleModalSubmit = async (data: any) => {
-    try {
-      if (editingPost) {
-        await postService.updatePost(editingPost.id, data);
-      } else {
-        await postService.createPost(data);
-      }
-      setModalOpen(false);
-      setEditingPost(null);
-      fetchPosts();
-      fetchDashboardData(); // Refresh analytics after creating/updating post
-    } catch (err) {
-      setError('Failed to save post');
-    }
+    navigate('/dashboard/content');
   };
 
   const recentPosts = posts.slice(0, 3).map(post => ({
@@ -177,7 +152,7 @@ export default function Dashboard() {
   ] : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="main" aria-label="Dashboard">
       {/* Welcome Section */}
       <div className="flex justify-between items-center">
         <div>
@@ -188,20 +163,28 @@ export default function Dashboard() {
             Here's what's happening with your social media today.
           </p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleCreate}>
-          <Calendar className="h-4 w-4 mr-2" />
+        <Button 
+          className="bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" 
+          onClick={handleCreate}
+          aria-label="Schedule a new post"
+        >
+          <Calendar className="h-4 w-4 mr-2" aria-hidden="true" />
           Schedule New Post
         </Button>
       </div>
 
-      {error && <div className="text-red-500">{error}</div>}
+      {error && (
+        <div className="text-red-500" role="alert" aria-live="polite">
+          {error}
+        </div>
+      )}
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" role="region" aria-label="Performance metrics">
         {analyticsLoading ? (
           // Loading skeleton for metrics
           Array.from({ length: 4 }).map((_, index) => (
-            <Card key={index} className="hover:shadow-md transition-shadow">
+            <Card key={index} className="hover:shadow-md transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
                 <div className="h-4 w-4 bg-gray-200 rounded animate-pulse"></div>
@@ -214,12 +197,12 @@ export default function Dashboard() {
           ))
         ) : (
           metrics.map((metric) => (
-            <Card key={metric.title} className="hover:shadow-md transition-shadow">
+            <Card key={metric.title} className="hover:shadow-md transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">
                   {metric.title}
                 </CardTitle>
-                <metric.icon className="h-4 w-4 text-blue-600" />
+                <metric.icon className="h-4 w-4 text-blue-600" aria-hidden="true" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">{metric.value}</div>
@@ -228,7 +211,7 @@ export default function Dashboard() {
                 }`}>
                   <TrendingUp className={`h-3 w-3 mr-1 ${
                     metric.trend === 'down' ? 'rotate-180' : ''
-                  }`} />
+                  }`} aria-hidden="true" />
                   {metric.change} from last month
                 </p>
               </CardContent>
@@ -239,27 +222,33 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Recent Posts</CardTitle>
-            <Button variant="ghost" size="sm">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => navigate('/dashboard/content')}
+              className="focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              aria-label="View all posts in content studio"
+            >
               View All
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <ChevronRight className="h-4 w-4 ml-1" aria-hidden="true" />
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
             {loading ? (
               <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                <Loader2 className="h-6 w-6 animate-spin text-blue-600" aria-label="Loading posts" />
                 <span className="ml-2">Loading posts...</span>
               </div>
             ) : recentPosts.length > 0 ? (
               recentPosts.map((post) => {
                 const PlatformIcon = getPlatformIcon(post.platform);
                 return (
-                  <div key={post.id} className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
+                  <div key={post.id} className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
                     <div className="flex-shrink-0">
-                      <PlatformIcon className="h-5 w-5 text-gray-600" />
+                      <PlatformIcon className="h-5 w-5 text-gray-600" aria-hidden="true" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-900 truncate">{post.content}</p>
@@ -281,40 +270,44 @@ export default function Dashboard() {
         </Card>
 
         {/* Quick Actions */}
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <Button 
-              className="w-full justify-start bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              className="w-full justify-start bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               onClick={() => navigate('/dashboard/content')}
+              aria-label="Generate AI content"
             >
-              <PenTool className="h-4 w-4 mr-2" />
+              <PenTool className="h-4 w-4 mr-2" aria-hidden="true" />
               Generate AI Content
             </Button>
             <Button 
               variant="outline" 
-              className="w-full justify-start"
+              className="w-full justify-start focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               onClick={() => navigate('/dashboard/calendar')}
+              aria-label="Schedule posts for the week"
             >
-              <Calendar className="h-4 w-4 mr-2" />
+              <Calendar className="h-4 w-4 mr-2" aria-hidden="true" />
               Schedule Posts for Week
             </Button>
             <Button 
               variant="outline" 
-              className="w-full justify-start"
+              className="w-full justify-start focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               onClick={() => navigate('/dashboard/analytics')}
+              aria-label="View analytics report"
             >
-              <TrendingUp className="h-4 w-4 mr-2" />
+              <TrendingUp className="h-4 w-4 mr-2" aria-hidden="true" />
               View Analytics Report
             </Button>
             <Button 
               variant="outline" 
-              className="w-full justify-start"
+              className="w-full justify-start focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               onClick={() => navigate('/dashboard/accounts')}
+              aria-label="Manage connected accounts"
             >
-              <Users className="h-4 w-4 mr-2" />
+              <Users className="h-4 w-4 mr-2" aria-hidden="true" />
               Manage Connected Accounts ({accounts.length})
             </Button>
           </CardContent>
@@ -323,11 +316,11 @@ export default function Dashboard() {
 
       {/* AI Insights */}
       {insights && (
-        <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50">
+        <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50 hover:shadow-lg transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <div className="w-6 h-6 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-                <TrendingUp className="h-3 w-3 text-white" />
+                <TrendingUp className="h-3 w-3 text-white" aria-hidden="true" />
               </div>
               AI Insights & Recommendations
             </CardTitle>
@@ -362,14 +355,6 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {modalOpen && (
-        <PostComposer
-          onClose={handleModalClose}
-          post={editingPost}
-          onSubmit={handleModalSubmit}
-        />
       )}
     </div>
   );

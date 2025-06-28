@@ -197,14 +197,16 @@ export default function Homepage() {
       <div className="fixed top-6 right-6 z-40 flex items-center space-x-4">
         <Button
           variant="outline"
-          className="border-blue-600 text-blue-600 bg-white hover:bg-blue-50 font-semibold px-6 py-2"
+          className="border-blue-600 text-blue-600 bg-white hover:bg-blue-50 font-semibold px-6 py-2 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           onClick={() => { setLoginMode('login'); setShowLoginModal(true); }}
+          aria-label="Open login modal"
         >
           Login
         </Button>
         <Button
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           onClick={() => { setLoginMode('register'); setShowLoginModal(true); }}
+          aria-label="Open sign up modal"
         >
           Sign Up
         </Button>
@@ -230,16 +232,17 @@ export default function Homepage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
               <Button 
                 size="lg" 
-                className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-4"
+                className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-4 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 onClick={() => window.location.href = '/onboarding'}
+                aria-label="Get started with SocialMind for free"
               >
                 Get Started Free
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
               </Button>
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="lg" className="border-white text-blue-600 hover:bg-white/10 text-lg px-8 py-4">
-                    <Play className="mr-2 h-5 w-5" />
+                  <Button variant="outline" size="lg" className="border-white text-blue-600 hover:bg-white/10 text-lg px-8 py-4 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" aria-label="Watch 2-minute overview video">
+                    <Play className="mr-2 h-5 w-5" aria-hidden="true" />
                     Watch 2-Minute Overview
                   </Button>
                 </DialogTrigger>
@@ -266,23 +269,31 @@ export default function Homepage() {
       )}
 
       {/* Social Proof Bar */}
-      <section className="bg-white py-8 shadow-sm">
+      <section className="bg-white py-8 shadow-sm" aria-label="Social proof statistics">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div className="animate-pulse">
-              <div className="text-3xl font-bold text-blue-600">{counters.posts.toLocaleString()}+</div>
+              <div className="text-3xl font-bold text-blue-600" aria-label={`${counters.posts.toLocaleString()} posts automated`}>
+                {counters.posts.toLocaleString()}+
+              </div>
               <div className="text-gray-600">Posts Automated</div>
             </div>
             <div className="animate-pulse">
-              <div className="text-3xl font-bold text-indigo-600">{counters.hours.toLocaleString()}+</div>
+              <div className="text-3xl font-bold text-indigo-600" aria-label={`${counters.hours.toLocaleString()} hours saved`}>
+                {counters.hours.toLocaleString()}+
+              </div>
               <div className="text-gray-600">Hours Saved</div>
             </div>
             <div className="animate-pulse">
-              <div className="text-3xl font-bold text-cyan-600">{counters.engagement}%</div>
+              <div className="text-3xl font-bold text-cyan-600" aria-label={`${counters.engagement} percent engagement boost`}>
+                {counters.engagement}%
+              </div>
               <div className="text-gray-600">Engagement Boost</div>
             </div>
             <div className="animate-pulse">
-              <div className="text-3xl font-bold text-blue-700">{counters.users.toLocaleString()}+</div>
+              <div className="text-3xl font-bold text-blue-700" aria-label={`${counters.users.toLocaleString()} happy users`}>
+                {counters.users.toLocaleString()}+
+              </div>
               <div className="text-gray-600">Happy Users</div>
             </div>
           </div>
@@ -290,40 +301,40 @@ export default function Homepage() {
       </section>
 
       {/* Problem & Solution Section */}
-      <section className="py-20">
+      <section className="py-20" aria-labelledby="challenge-heading">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">The Social Media Challenge</h2>
+            <h2 id="challenge-heading" className="text-4xl font-bold mb-4">The Social Media Challenge</h2>
             <p className="text-xl text-gray-600">See how SocialMind solves real problems</p>
           </div>
           <Tabs defaultValue="problem" className="max-w-6xl mx-auto">
-            <TabsList className="grid w-full grid-cols-2 mb-8">
-              <TabsTrigger value="problem" className="text-lg">The Problem</TabsTrigger>
-              <TabsTrigger value="solution" className="text-lg">Our Solution</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-8" role="tablist" aria-label="Problem and solution tabs">
+              <TabsTrigger value="problem" className="text-lg" role="tab" aria-selected="true" aria-controls="problem-panel">The Problem</TabsTrigger>
+              <TabsTrigger value="solution" className="text-lg" role="tab" aria-selected="false" aria-controls="solution-panel">Our Solution</TabsTrigger>
             </TabsList>
-            <TabsContent value="problem" className="space-y-6">
+            <TabsContent value="problem" className="space-y-6" role="tabpanel" id="problem-panel" aria-labelledby="problem-tab">
               <div className="grid md:grid-cols-3 gap-6">
-                <Card className="hover:shadow-lg transition-shadow">
+                <Card className="hover:shadow-lg transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
                   <CardHeader>
-                    <Clock className="h-8 w-8 text-red-500 mb-2" />
+                    <Clock className="h-8 w-8 text-red-500 mb-2" aria-hidden="true" />
                     <CardTitle>Time Consuming</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p>Managing multiple platforms takes 4+ hours daily</p>
                   </CardContent>
                 </Card>
-                <Card className="hover:shadow-lg transition-shadow">
+                <Card className="hover:shadow-lg transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
                   <CardHeader>
-                    <Target className="h-8 w-8 text-orange-500 mb-2" />
+                    <Target className="h-8 w-8 text-orange-500 mb-2" aria-hidden="true" />
                     <CardTitle>Inconsistent Content</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p>Maintaining brand voice across platforms is challenging</p>
                   </CardContent>
                 </Card>
-                <Card className="hover:shadow-lg transition-shadow">
+                <Card className="hover:shadow-lg transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
                   <CardHeader>
-                    <BarChart3 className="h-8 w-8 text-yellow-500 mb-2" />
+                    <BarChart3 className="h-8 w-8 text-yellow-500 mb-2" aria-hidden="true" />
                     <CardTitle>Poor Analytics</CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -332,29 +343,29 @@ export default function Homepage() {
                 </Card>
               </div>
             </TabsContent>
-            <TabsContent value="solution" className="space-y-6">
+            <TabsContent value="solution" className="space-y-6" role="tabpanel" id="solution-panel" aria-labelledby="solution-tab">
               <div className="grid md:grid-cols-3 gap-6">
-                <Card className="hover:shadow-lg transition-shadow border-blue-200">
+                <Card className="hover:shadow-lg transition-shadow border-blue-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
                   <CardHeader>
-                    <Zap className="h-8 w-8 text-blue-500 mb-2" />
+                    <Zap className="h-8 w-8 text-blue-500 mb-2" aria-hidden="true" />
                     <CardTitle>AI Automation</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p>Reduce management time by 80% with intelligent automation</p>
                   </CardContent>
                 </Card>
-                <Card className="hover:shadow-lg transition-shadow border-indigo-200">
+                <Card className="hover:shadow-lg transition-shadow border-indigo-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
                   <CardHeader>
-                    <Brain className="h-8 w-8 text-indigo-500 mb-2" />
+                    <Brain className="h-8 w-8 text-indigo-500 mb-2" aria-hidden="true" />
                     <CardTitle>Consistent Voice</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p>AI learns your brand voice for consistent messaging</p>
                   </CardContent>
                 </Card>
-                <Card className="hover:shadow-lg transition-shadow border-cyan-200">
+                <Card className="hover:shadow-lg transition-shadow border-cyan-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
                   <CardHeader>
-                    <TrendingUp className="h-8 w-8 text-cyan-500 mb-2" />
+                    <TrendingUp className="h-8 w-8 text-cyan-500 mb-2" aria-hidden="true" />
                     <CardTitle>Unified Analytics</CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -368,17 +379,17 @@ export default function Homepage() {
       </section>
 
       {/* Features Grid */}
-      <section className="py-20 bg-gradient-to-br from-blue-50 to-indigo-50">
+      <section className="py-20 bg-gradient-to-br from-blue-50 to-indigo-50" aria-labelledby="features-heading">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Powerful Features at Your Fingertips</h2>
+            <h2 id="features-heading" className="text-4xl font-bold mb-4">Powerful Features at Your Fingertips</h2>
             <p className="text-xl text-gray-600">Discover what makes SocialMind different</p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <Card key={index} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
+              <Card key={index} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
                 <CardHeader>
-                  <feature.icon className="h-12 w-12 text-blue-600 mb-4 group-hover:scale-110 transition-transform" />
+                  <feature.icon className="h-12 w-12 text-blue-600 mb-4 group-hover:scale-110 transition-transform" aria-hidden="true" />
                   <CardTitle className="text-xl">{feature.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -394,10 +405,10 @@ export default function Homepage() {
       </section>
 
       {/* Workflow Section */}
-      <section className="py-20">
+      <section className="py-20" aria-labelledby="workflow-heading">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Your Workflow, Simplified</h2>
+            <h2 id="workflow-heading" className="text-4xl font-bold mb-4">Your Workflow, Simplified</h2>
             <p className="text-xl text-gray-600">From idea to analytics in 8 simple steps</p>
           </div>
           <div className="max-w-4xl mx-auto">
@@ -406,7 +417,7 @@ export default function Homepage() {
                 <div key={index} className="text-center group">
                   <div className="relative mb-4">
                     <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                      <step.icon className="h-8 w-8 text-white" />
+                      <step.icon className="h-8 w-8 text-white" aria-hidden="true" />
                     </div>
                     <div className="absolute -top-2 -right-2 w-6 h-6 bg-cyan-400 rounded-full flex items-center justify-center text-xs font-bold">
                       {index + 1}
@@ -421,7 +432,7 @@ export default function Homepage() {
         </div>
       </section>
 
-     
+      
       {/* Footer */}
       <footer className="bg-gradient-to-r from-blue-800 to-indigo-900 text-white py-12 mt-20 shadow-inner">
         <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-12">
@@ -431,8 +442,8 @@ export default function Homepage() {
             <span className="text-3xl font-extrabold tracking-wide mb-1">Social Mind</span>
             <span className="text-blue-200 mb-4">Revolutionizing Social Media Management</span>
             <div className="flex flex-col gap-2 mt-2">
-              <a href="https://mail.google.com/mail/u/0/?to=socialminddd@gmail.com.com&fs=1&tf=cm" className="flex items-center gap-2 bg-gradient-to-r from-cyan-400 to-blue-500 text-white px-4 py-2 rounded-full font-medium shadow hover:from-blue-500 hover:to-cyan-400 transition group">
-                <Mail className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
+              <a href="https://mail.google.com/mail/u/0/?to=socialminddd@gmail.com.com&fs=1&tf=cm" className="flex items-center gap-2 bg-gradient-to-r from-cyan-400 to-blue-500 text-white px-4 py-2 rounded-full font-medium shadow hover:from-blue-500 hover:to-cyan-400 transition group focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" aria-label="Send email to SocialMind team">
+                <Mail className="h-5 w-5 text-white group-hover:scale-110 transition-transform" aria-hidden="true" />
                 socialminddd@gmail.com
               </a>
             </div>
@@ -443,7 +454,7 @@ export default function Homepage() {
             {team.map((member, idx) => (
               <div
                 key={member.email}
-                className="flex flex-col items-center bg-white/10 rounded-xl p-6 shadow-xl hover:scale-105 hover:shadow-2xl transition-transform duration-300 animate-fade-in"
+                className="flex flex-col items-center bg-white/10 rounded-xl p-6 shadow-xl hover:scale-105 hover:shadow-2xl transition-transform duration-300 animate-fade-in focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2"
                 style={{ animationDelay: `${idx * 100}ms` }}
               >
                 {/* Avatar */}
@@ -459,18 +470,20 @@ export default function Homepage() {
                     href={member.linkedin}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 bg-white text-blue-700 px-3 py-1 rounded-full font-medium shadow hover:bg-blue-100 active:scale-95 transition group relative"
+                    className="flex items-center gap-1 bg-white text-blue-700 px-3 py-1 rounded-full font-medium shadow hover:bg-blue-100 active:scale-95 transition group relative focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    aria-label={`View ${member.name}'s LinkedIn profile`}
                   >
-                    <Linkedin className="h-4 w-4 text-blue-700 group-hover:scale-110 transition-transform" />
+                    <Linkedin className="h-4 w-4 text-blue-700 group-hover:scale-110 transition-transform" aria-hidden="true" />
                     <span className="hidden sm:inline">LinkedIn</span>
                     <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition pointer-events-none">View LinkedIn</span>
                   </a>
                   {/* Email Button with Tooltip */}
                   <a
                     href={`https://mail.google.com/mail/u/0/?to=${member.email}&fs=1&tf=cm`}
-                    className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-full font-medium shadow hover:bg-blue-700 active:scale-95 transition group relative"
+                    className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-full font-medium shadow hover:bg-blue-700 active:scale-95 transition group relative focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    aria-label={`Send email to ${member.name}`}
                   >
-                    <Mail className="h-4 w-4 text-white group-hover:scale-110 transition-transform" />
+                    <Mail className="h-4 w-4 text-white group-hover:scale-110 transition-transform" aria-hidden="true" />
                     <span className="hidden sm:inline">Email</span>
                     <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition pointer-events-none">Email {member.name.split(' ')[0]}</span>
                   </a>
