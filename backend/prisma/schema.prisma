@@ -45,6 +45,8 @@ model User {
   updatedAt         DateTime          @updatedAt
   password          String
   profilePicture    String?
+  otp               String?  // For storing OTP
+  otpExpiry         DateTime? // For OTP expiry
 
   // Relations
   organization      Organization?      @relation(fields: [organizationId], references: [id])
