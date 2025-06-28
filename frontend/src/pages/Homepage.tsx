@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
+import logo from "../assets/logo.png";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import {
   Dialog,
@@ -32,9 +33,15 @@ import {
   Share2,
   Eye,
   ChevronRight,
-  PenTool
+  PenTool,
+  Mail,
+  Linkedin
 } from "lucide-react";
 import LoginModal from "../components/shared/LoginModal";
+import ayaanImg from "../assets/team/ayaan.jpg";
+import dhruvImg from "../assets/team/dhruv.jpeg";
+import prarabdhImg from "../assets/team/Prarabdh.jpeg";
+import shivangiImg from "../assets/team/Shivangi.png";
 
 export default function Homepage() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
@@ -148,6 +155,42 @@ export default function Homepage() {
     return () => clearInterval(timer);
   }, []);
 
+  // Team data for dynamic rendering
+  const team = [
+    {
+      name: "Ayaan Agarwal",
+      email: "ayaanbansal02@gmail.com",
+      linkedin: "https://www.linkedin.com/in/ayaan-agarwal-729266261/",
+      color: "bg-gradient-to-br from-blue-400 to-cyan-500",
+      initials: "AA",
+      image: ayaanImg
+    },
+    {
+      name: "Dhruv Duggal",
+      email: "dhruvduggal2049@gmail.com",
+      linkedin: "https://www.linkedin.com/in/dhruv-duggal-897b01255/",
+      color: "bg-gradient-to-br from-indigo-400 to-blue-600",
+      initials: "DD",
+      image: dhruvImg
+    },
+    {
+      name: "Prarabdh Atrey",
+      email: "prarabdhatrey@gmail.com",
+      linkedin: "https://www.linkedin.com/in/prarabdh-atrey-498ab9255/",
+      color: "bg-gradient-to-br from-pink-400 to-purple-500",
+      initials: "PA",
+      image: prarabdhImg
+    },
+    {
+      name: "Shivangi Srivastva",
+      email: "shivangisrivastva30@gmail.com",
+      linkedin: "https://www.linkedin.com/in/shivangi-srivastva-90ab73270/",
+      color: "bg-gradient-to-br from-yellow-400 to-orange-500",
+      initials: "SS",
+      image: shivangiImg
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-cyan-50">
       {/* Auth Buttons - top right */}
@@ -167,20 +210,22 @@ export default function Homepage() {
         </Button>
       </div>
 
+      {/* Logo - top left */}
+      <div className="absolute top-6 left-6 z-40 flex items-center">
+        <img src={logo} alt="Social Minds Logo" className="h-12 w-12 rounded-full shadow-lg" />
+      </div>
+
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white">
         <div className="absolute inset-0 bg-black/20"></div>
         <div className="relative container mx-auto px-6 py-20 text-center">
           <div className="animate-fade-in">
-            <Badge className="bg-white/20 text-white mb-6 hover:bg-white/30 transition-colors">
-              <Sparkles className="h-4 w-4 mr-2" />
-              Powered by Advanced AI
-            </Badge>
+            
             <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-              Revolutionize Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-blue-300">Social Media</span> Management with AI
+              Revolutionizing Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-blue-300">Social Media</span> Management with Social Mind
             </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
-              Create, schedule, analyze, and engagesmarter, faster, together.
+              Create, schedule, analyze, and engage smarter, faster, together.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
               <Button 
@@ -193,7 +238,7 @@ export default function Homepage() {
               </Button>
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="lg" className="border-white text-white hover:bg-white/10 text-lg px-8 py-4">
+                  <Button variant="outline" size="lg" className="border-white text-blue-600 hover:bg-white/10 text-lg px-8 py-4">
                     <Play className="mr-2 h-5 w-5" />
                     Watch 2-Minute Overview
                   </Button>
@@ -376,23 +421,79 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* Innovation Highlight */}
-      <section className="py-20 bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
-        <div className="container mx-auto px-6 text-center">
-          <div className="max-w-3xl mx-auto">
-            <Sparkles className="h-16 w-16 mx-auto mb-6" />
-            <h2 className="text-4xl font-bold mb-6">Innovation at Its Core</h2>
-            <p className="text-xl mb-8 text-blue-100">
-              Our proprietary AI engine combines natural language processing, machine learning, and predictive analytics to deliver unprecedented social media management capabilities.
-            </p>
-            <div className="grid md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="text-3xl font-bold">98%</div>
-              </div>
+     
+      {/* Footer */}
+      <footer className="bg-gradient-to-r from-blue-800 to-indigo-900 text-white py-12 mt-20 shadow-inner">
+        <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-12">
+          {/* Brand & Social Mind Contact */}
+          <div className="flex flex-col items-center md:items-start mb-8 md:mb-0">
+            <img src={logo} alt="Social Minds Logo" className="h-14 w-14 rounded-full mb-3 shadow-lg border-2 border-white" />
+            <span className="text-3xl font-extrabold tracking-wide mb-1">Social Mind</span>
+            <span className="text-blue-200 mb-4">Revolutionizing Social Media Management</span>
+            <div className="flex flex-col gap-2 mt-2">
+              <a href="https://mail.google.com/mail/u/0/?to=socialminddd@gmail.com.com&fs=1&tf=cm" className="flex items-center gap-2 bg-gradient-to-r from-cyan-400 to-blue-500 text-white px-4 py-2 rounded-full font-medium shadow hover:from-blue-500 hover:to-cyan-400 transition group">
+                <Mail className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
+                socialminddd@gmail.com
+              </a>
             </div>
           </div>
+
+          {/* Team Section - Dynamic */}
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+            {team.map((member, idx) => (
+              <div
+                key={member.email}
+                className="flex flex-col items-center bg-white/10 rounded-xl p-6 shadow-xl hover:scale-105 hover:shadow-2xl transition-transform duration-300 animate-fade-in"
+                style={{ animationDelay: `${idx * 100}ms` }}
+              >
+                {/* Avatar */}
+                <img
+                  src={member.image}
+                  alt={member.name}
+                  className="w-16 h-16 rounded-full object-cover mb-3 shadow-lg border-2 border-white"
+                />
+                <span className="font-semibold text-lg mb-1">{member.name}</span>
+                <div className="flex gap-3 mt-2">
+                  {/* LinkedIn Button with Tooltip */}
+                  <a
+                    href={member.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 bg-white text-blue-700 px-3 py-1 rounded-full font-medium shadow hover:bg-blue-100 active:scale-95 transition group relative"
+                  >
+                    <Linkedin className="h-4 w-4 text-blue-700 group-hover:scale-110 transition-transform" />
+                    <span className="hidden sm:inline">LinkedIn</span>
+                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition pointer-events-none">View LinkedIn</span>
+                  </a>
+                  {/* Email Button with Tooltip */}
+                  <a
+                    href={`https://mail.google.com/mail/u/0/?to=${member.email}&fs=1&tf=cm`}
+                    className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-full font-medium shadow hover:bg-blue-700 active:scale-95 transition group relative"
+                  >
+                    <Mail className="h-4 w-4 text-white group-hover:scale-110 transition-transform" />
+                    <span className="hidden sm:inline">Email</span>
+                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition pointer-events-none">Email {member.name.split(' ')[0]}</span>
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </section>
+        <div className="text-center text-blue-200 mt-10 text-sm tracking-wide">&copy; {new Date().getFullYear()} Social Mind. All rights reserved.</div>
+      </footer>
+
+      {/* Add fade-in animation */}
+      <style>
+        {`
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: none; }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.7s cubic-bezier(0.4,0,0.2,1) both;
+        }
+        `}
+      </style>
     </div>
   );
 } 
