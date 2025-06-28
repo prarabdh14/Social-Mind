@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Switch } from "../components/ui/switch";
-import { Label } from "../components/ui/label";
 import { dashboardService } from "../services/api";
 import { SocialMediaAccount } from "../types";
+import { API_URL } from "../config";
 import { 
   Plus,
   Settings,
@@ -19,17 +19,22 @@ import {
   MessageCircle,
   CheckCircle,
   AlertCircle,
-  MoreVertical,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Link,
+  Unlink,
+  Clock
 } from "lucide-react";
 
-export default function Accounts() {
+export default function SocialAccounts() {
+  console.log('SocialAccounts component loaded');
+  
   const [accounts, setAccounts] = useState<SocialMediaAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [connecting, setConnecting] = useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
 
   const fetchAccounts = async () => {
     setLoading(true);
@@ -61,33 +66,86 @@ export default function Accounts() {
     setConnecting(platform);
     setError(null);
     
+    console.log(`Attempting to connect ${platform} account...`);
+    console.log('API URL:', API_URL);
+    console.log('Token exists:', !!localStorage.getItem('token'));
+    
     try {
       let authUrl: string;
       
       if (platform === 'YouTube') {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/youtube`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        try {
+          console.log('Calling YouTube auth endpoint...');
+          const response = await fetch(`${API_URL}/auth/youtube`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          
+          console.log('YouTube response status:', response.status);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('YouTube auth error response:', errorText);
+            throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
           }
-        });
-        const data = await response.json();
-        authUrl = data.authUrl;
+          
+          const data = await response.json();
+          console.log('YouTube auth data:', data);
+          
+          if (data.error) {
+            throw new Error(data.message || data.error);
+          }
+          
+          authUrl = data.authUrl;
+        } catch (err) {
+          console.error('YouTube auth error:', err);
+          setError('YouTube authentication is not configured. Please check environment variables (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, YOUTUBE_REDIRECT_URI).');
+          return;
+        }
       } else if (platform === 'Threads') {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/threads`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        try {
+          console.log('Calling Threads auth endpoint...');
+          const response = await fetch(`${API_URL}/auth/threads`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          
+          console.log('Threads response status:', response.status);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Threads auth error response:', errorText);
+            throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
           }
-        });
-        const data = await response.json();
-        authUrl = data.authUrl;
+          
+          const data = await response.json();
+          console.log('Threads auth data:', data);
+          
+          if (data.error) {
+            throw new Error(data.message || data.error);
+          }
+          
+          authUrl = data.authUrl;
+        } catch (err) {
+          console.error('Threads auth error:', err);
+          setError('Threads authentication is not configured. Please check environment variables (FACEBOOK_CLIENT_ID, FACEBOOK_CLIENT_SECRET, THREADS_REDIRECT_URI).');
+          return;
+        }
       } else {
         // For other platforms, show a message that they're not implemented yet
-        setError(`${platform} authentication is not implemented yet.`);
+        setError(`${platform} authentication is not implemented yet. Only YouTube and Threads are currently supported.`);
         return;
       }
       
       // Open authentication window
       const authWindow = window.open(authUrl, '_blank', 'width=500,height=600');
+      
+      if (!authWindow) {
+        setError('Popup blocked! Please allow popups for this site and try again.');
+        return;
+      }
       
       // Poll for window closure and refresh accounts
       const checkClosed = setInterval(() => {
@@ -98,15 +156,55 @@ export default function Accounts() {
       }, 1000);
       
     } catch (err) {
-      setError(`Failed to connect ${platform} account`);
+      setError(`Failed to connect ${platform} account: ${err instanceof Error ? err.message : 'Unknown error'}`);
       console.error('Connect account error:', err);
     } finally {
       setConnecting(null);
     }
   };
 
+  const disconnectAccount = async (accountId: string, platform: string) => {
+    setDisconnecting(platform);
+    setError(null);
+    
+    try {
+      await fetch(`${API_URL}/social-accounts/${accountId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      await refreshAccounts();
+    } catch (err) {
+      setError(`Failed to disconnect ${platform} account`);
+      console.error('Disconnect account error:', err);
+    } finally {
+      setDisconnecting(null);
+    }
+  };
+
   useEffect(() => {
     fetchAccounts();
+    
+    // Test backend connection
+    const testBackendConnection = async () => {
+      try {
+        console.log('Testing backend connection to:', API_URL);
+        const response = await fetch(`${API_URL}/health`, { 
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log('Backend connection test response:', response.status);
+      } catch (err) {
+        console.error('Backend connection test failed:', err);
+        setError('Cannot connect to backend server. Please make sure the backend is running on the correct port.');
+      }
+    };
+    
+    testBackendConnection();
   }, []);
 
   const platforms = {
@@ -115,46 +213,63 @@ export default function Accounts() {
       color: "text-pink-600", 
       bg: "bg-pink-50", 
       name: "Instagram",
-      description: "Visual content and stories"
+      description: "Visual content and stories",
+      features: ["Post photos and videos", "Share stories", "IGTV content", "Reels"],
+      supported: false,
+      comingSoon: true
     },
     Twitter: { 
       icon: Twitter, 
       color: "text-blue-400", 
       bg: "bg-blue-50", 
       name: "Twitter",
-      description: "Real-time updates and news"
+      description: "Real-time updates and news",
+      features: ["Tweet text and media", "Thread posts", "Retweet content", "Engage with followers"],
+      supported: false,
+      comingSoon: true
     },
     Facebook: { 
       icon: Facebook, 
       color: "text-blue-600", 
       bg: "bg-blue-50", 
       name: "Facebook",
-      description: "Community and engagement"
+      description: "Community and engagement",
+      features: ["Post to timeline", "Share stories", "Create events", "Group posts"],
+      supported: false,
+      comingSoon: true
     },
     LinkedIn: { 
       icon: Linkedin, 
       color: "text-blue-700", 
       bg: "bg-blue-50", 
       name: "LinkedIn",
-      description: "Professional networking"
+      description: "Professional networking",
+      features: ["Share articles", "Post updates", "Company posts", "Professional content"],
+      supported: false,
+      comingSoon: true
     },
     YouTube: { 
       icon: Youtube, 
       color: "text-red-600", 
       bg: "bg-red-50", 
       name: "YouTube",
-      description: "Video content platform"
+      description: "Video content platform",
+      features: ["Upload videos", "Create shorts", "Live streaming", "Community posts"],
+      supported: true,
+      comingSoon: false
     },
     Threads: { 
       icon: MessageCircle, 
       color: "text-black", 
       bg: "bg-gray-50", 
       name: "Threads",
-      description: "Conversational social platform"
+      description: "Conversational social platform",
+      features: ["Text posts", "Photo sharing", "Thread conversations", "Community engagement"],
+      supported: true,
+      comingSoon: false
     }
   };
 
-  // Available platforms that can be connected
   const availablePlatforms = [
     { platform: "Instagram", connected: accounts.some(acc => acc.platform === "Instagram") },
     { platform: "Twitter", connected: accounts.some(acc => acc.platform === "Twitter") },
@@ -165,7 +280,6 @@ export default function Accounts() {
   ];
 
   const getStatusIcon = (account: SocialMediaAccount) => {
-    // Simulate status based on account age
     const accountAge = Date.now() - new Date(account.createdAt).getTime();
     const daysOld = accountAge / (1000 * 60 * 60 * 24);
     
@@ -191,10 +305,6 @@ export default function Accounts() {
     }
   };
 
-  const getEngagementColor = (engagement: string) => {
-    return engagement.startsWith('+') ? 'text-green-600' : 'text-red-600';
-  };
-
   const formatLastSync = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -212,7 +322,7 @@ export default function Accounts() {
     }
   };
 
-  const totalFollowers = accounts.length * 5000; // Simulate 5000 followers per account
+  const totalFollowers = accounts.length * 5000;
   const avgEngagement = accounts.length > 0 ? '+8.5%' : '+0%';
   const activeAccounts = accounts.length;
 
@@ -221,7 +331,7 @@ export default function Accounts() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Account Management</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Social Accounts</h1>
             <p className="text-gray-600 mt-1">Manage your connected social media accounts</p>
           </div>
         </div>
@@ -237,8 +347,8 @@ export default function Accounts() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Account Management</h1>
-          <p className="text-gray-600 mt-1">Manage your connected social media accounts</p>
+          <h1 className="text-3xl font-bold text-gray-900">Social Accounts</h1>
+          <p className="text-gray-600 mt-1">Connect and manage your social media accounts</p>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -249,14 +359,17 @@ export default function Accounts() {
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4 mr-2" />
-            Connect Account
-          </Button>
         </div>
       </div>
 
-      {error && <div className="text-red-500">{error}</div>}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex">
+            <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
+            <span className="text-red-800">{error}</span>
+          </div>
+        </div>
+      )}
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -268,7 +381,7 @@ export default function Accounts() {
                 <p className="text-2xl font-bold text-gray-900">{accounts.length}</p>
               </div>
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <Settings className="h-4 w-4 text-blue-600" />
+                <Link className="h-4 w-4 text-blue-600" />
               </div>
             </div>
           </CardContent>
@@ -320,20 +433,19 @@ export default function Accounts() {
       {/* Connected Accounts */}
       <Card>
         <CardHeader>
-          <CardTitle>Connected Accounts</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Link className="h-5 w-5" />
+            Connected Accounts
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {accounts.length === 0 ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Plus className="h-8 w-8 text-gray-400" />
+                <Link className="h-8 w-8 text-gray-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">No accounts connected</h3>
               <p className="text-gray-600 mb-4">Connect your social media accounts to start managing your content</p>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="h-4 w-4 mr-2" />
-                Connect Your First Account
-              </Button>
             </div>
           ) : (
             <div className="space-y-4">
@@ -341,7 +453,6 @@ export default function Accounts() {
                 const platform = platforms[account.platform as keyof typeof platforms];
                 const Icon = platform?.icon || Settings;
                 const status = getStatusText(account);
-                const engagement = status === 'healthy' ? '+8.2%' : '-2.1%';
                 
                 return (
                   <div key={account.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
@@ -362,13 +473,6 @@ export default function Accounts() {
                         <p className="text-xs text-gray-600">followers</p>
                       </div>
                       
-                      <div className="text-right">
-                        <p className={`text-sm font-medium ${getEngagementColor(engagement)}`}>
-                          {engagement}
-                        </p>
-                        <p className="text-xs text-gray-600">engagement</p>
-                      </div>
-                      
                       <div className="flex items-center space-x-2">
                         {getStatusIcon(account)}
                         <span className="text-xs text-gray-600">
@@ -378,8 +482,17 @@ export default function Accounts() {
                       
                       <div className="flex items-center space-x-2">
                         <Switch defaultChecked={status === 'healthy'} />
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="h-4 w-4" />
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => disconnectAccount(account.id, account.platform)}
+                          disabled={disconnecting === account.platform}
+                        >
+                          {disconnecting === account.platform ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Unlink className="h-4 w-4" />
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -397,31 +510,57 @@ export default function Accounts() {
           <CardTitle>Available Platforms</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {availablePlatforms.map(({ platform, connected }) => {
               const platformInfo = platforms[platform as keyof typeof platforms];
               const Icon = platformInfo?.icon || Settings;
               
               return (
-                <div key={platform} className={`p-4 border rounded-lg ${connected ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`w-10 h-10 ${platformInfo?.bg} rounded-full flex items-center justify-center`}>
-                      <Icon className={`h-5 w-5 ${platformInfo?.color}`} />
+                <div key={platform} className={`p-6 border rounded-lg ${connected ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`w-12 h-12 ${platformInfo?.bg} rounded-full flex items-center justify-center`}>
+                      <Icon className={`h-6 w-6 ${platformInfo?.color}`} />
                     </div>
-                    {connected && (
-                      <Badge className="bg-green-100 text-green-800">
-                        Connected
-                      </Badge>
-                    )}
+                    <div className="flex gap-2">
+                      {connected && (
+                        <Badge className="bg-green-100 text-green-800">
+                          Connected
+                        </Badge>
+                      )}
+                      {platformInfo?.comingSoon && !connected && (
+                        <Badge className="bg-blue-100 text-blue-800">
+                          Coming Soon
+                        </Badge>
+                      )}
+                      {platformInfo?.supported && !connected && (
+                        <Badge className="bg-green-100 text-green-800">
+                          Available
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                  <h3 className="font-medium text-gray-900 mb-1">{platformInfo?.name}</h3>
-                  <p className="text-sm text-gray-600 mb-3">{platformInfo?.description}</p>
+                  
+                  <h3 className="font-semibold text-gray-900 mb-2">{platformInfo?.name}</h3>
+                  <p className="text-sm text-gray-600 mb-4">{platformInfo?.description}</p>
+                  
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-gray-700 mb-2">Features:</p>
+                    <ul className="text-xs text-gray-600 space-y-1">
+                      {platformInfo?.features?.slice(0, 2).map((feature, index) => (
+                        <li key={index} className="flex items-center">
+                          <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  
                   <Button 
                     variant={connected ? "outline" : "default"}
                     size="sm"
                     className="w-full"
-                    disabled={connected || connecting === platform}
-                    onClick={() => !connected && connectAccount(platform)}
+                    disabled={connected || connecting === platform || !platformInfo?.supported}
+                    onClick={() => !connected && platformInfo?.supported && connectAccount(platform)}
                   >
                     {connecting === platform ? (
                       <>
@@ -429,9 +568,20 @@ export default function Accounts() {
                         Connecting...
                       </>
                     ) : connected ? (
-                      'Connected'
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Connected
+                      </>
+                    ) : platformInfo?.comingSoon ? (
+                      <>
+                        <Clock className="h-4 w-4 mr-2" />
+                        Coming Soon
+                      </>
                     ) : (
-                      'Connect Account'
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Connect Account
+                      </>
                     )}
                   </Button>
                 </div>
@@ -442,4 +592,4 @@ export default function Accounts() {
       </Card>
     </div>
   );
-}
+} 

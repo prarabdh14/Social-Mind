@@ -1,4 +1,3 @@
- 
 import { NavLink, useLocation } from "react-router-dom";
 import {
   BarChart3,
@@ -7,7 +6,8 @@ import {
   PenTool,
   Settings,
   Users,
-  Zap
+  Zap,
+  Link
 } from "lucide-react";
 import {
   Sidebar as SidebarComponent,
@@ -22,12 +22,12 @@ import {
 } from "../components/ui/sidebar";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: Home },
-  { name: "Content Studio", href: "/content", icon: PenTool },
-  { name: "Calendar", href: "/calendar", icon: Calendar },
-  { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "Accounts", href: "/accounts", icon: Users },
-  { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Content Studio", href: "/dashboard/content", icon: PenTool },
+  { name: "Calendar", href: "/dashboard/calendar", icon: Calendar },
+  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+  { name: "Social Accounts", href: "/dashboard/social-accounts", icon: Link },
+  { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -36,7 +36,10 @@ export function Sidebar() {
   const collapsed = state === "collapsed";
 
   const isActive = (path: string) => {
-    return path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+    if (path === "/dashboard") {
+      return location.pathname === "/dashboard" || location.pathname === "/dashboard/";
+    }
+    return location.pathname.startsWith(path);
   };
 
   return (
@@ -48,7 +51,7 @@ export function Sidebar() {
           </div>
           {!collapsed && (
             <div>
-              <h1 className="text-xl font-bold text-gray-900">SocialAI</h1>
+              <h1 className="text-xl font-bold text-gray-900">Social Mind</h1>
               <p className="text-xs text-gray-500">Smart Social Manager</p>
             </div>
           )}

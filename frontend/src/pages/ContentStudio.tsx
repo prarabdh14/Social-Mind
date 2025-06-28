@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Switch } from "../components/ui/switch";
 import { Label } from "../components/ui/label";
 import { API_URL } from "../config";
+import { postService } from "../services/api";
 import { 
   Wand2, 
   Instagram, 
@@ -21,7 +22,13 @@ import {
   TrendingUp,
   BookmarkPlus,
   RefreshCw,
-  Upload
+  Upload,
+  CheckCircle,
+  Loader2,
+  Save,
+  Clock,
+  Youtube,
+  MessageCircle
 } from "lucide-react";
 
 export default function ContentStudio() {
@@ -32,19 +39,28 @@ export default function ContentStudio() {
   const [selectedTone, setSelectedTone] = useState("professional");
   const [file, setFile] = useState<File | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
 
   const platforms = [
     { id: "instagram", name: "Instagram", icon: Instagram, color: "text-pink-600" },
     { id: "twitter", name: "Twitter", icon: Twitter, color: "text-blue-400" },
     { id: "facebook", name: "Facebook", icon: Facebook, color: "text-blue-600" },
     { id: "linkedin", name: "LinkedIn", icon: Linkedin, color: "text-blue-700" },
+    { id: "youtube", name: "YouTube", icon: Youtube, color: "text-red-600" },
+    { id: "threads", name: "Threads", icon: MessageCircle, color: "text-black" },
   ];
 
   const toneOptions = [
     { id: "professional", name: "Professional" },
     { id: "casual", name: "Casual" },
     { id: "witty", name: "Witty" },
-    { id: "inspiring", name: "Inspiring" }
+    { id: "inspiring", name: "Inspiring" },
+    { id: "humorous", name: "Humorous" },
+    { id: "educational", name: "Educational" }
   ];
 
   const contentTemplates = [
@@ -88,6 +104,9 @@ export default function ContentStudio() {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('tone', selectedTone);
+      formData.append('platform', selectedPlatform);
+      formData.append('contentIdea', contentIdea);
       
       const res = await fetch(`${API_URL}/ai/caption`, {
         method: 'POST',
@@ -102,6 +121,79 @@ export default function ContentStudio() {
       setAiError('Failed to generate caption. Please try again.');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleCopyContent = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedContent);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy content');
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!generatedContent.trim()) return;
+    
+    setSaving(true);
+    try {
+      await postService.createPost({
+        content: generatedContent,
+        platform: selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1),
+        status: 'DRAFT',
+        scheduledAt: new Date().toISOString()
+      });
+      
+      // Show success feedback
+      setGeneratedContent("");
+      setFile(null);
+    } catch (err) {
+      setAiError('Failed to save draft');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSchedulePost = async () => {
+    if (!generatedContent.trim() || !scheduledDate || !scheduledTime) {
+      setAiError('Please fill in all required fields');
+      return;
+    }
+    
+    setScheduling(true);
+    try {
+      const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+      
+      await postService.createPost({
+        content: generatedContent,
+        platform: selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1),
+        status: 'SCHEDULED',
+        scheduledAt: scheduledDateTime.toISOString()
+      });
+      
+      // Show success feedback
+      setGeneratedContent("");
+      setFile(null);
+      setScheduledDate("");
+      setScheduledTime("");
+    } catch (err) {
+      setAiError('Failed to schedule post');
+    } finally {
+      setScheduling(false);
+    }
+  };
+
+  const handleTemplateClick = (template: any) => {
+    setContentIdea(`Create a ${template.name.toLowerCase()} post about ${template.category.toLowerCase()}`);
+  };
+
+  const handleTopicClick = (topic: string) => {
+    if (generatedContent) {
+      setGeneratedContent(prev => prev + ' ' + topic);
+    } else {
+      setContentIdea(`Create content about ${topic}`);
     }
   };
 
@@ -149,7 +241,8 @@ export default function ContentStudio() {
                   <p className="text-xs text-gray-500 mt-1">PNG, JPG, MP4 up to 10MB</p>
                 </div>
                 {file && (
-                  <div className="mt-2 text-sm text-gray-600">
+                  <div className="mt-2 text-sm text-gray-600 flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
                     Selected: {file.name}
                   </div>
                 )}
@@ -223,12 +316,12 @@ export default function ContentStudio() {
               >
                 {isGenerating ? (
                   <>
-                    <Sparkles className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Generating AI Caption...
                   </>
                 ) : (
                   <>
-                    <Wand2 className="h-4 w-4 mr-2" />
+                    <Sparkles className="h-4 w-4 mr-2" />
                     Generate AI Caption
                   </>
                 )}
@@ -248,21 +341,88 @@ export default function ContentStudio() {
                     value={generatedContent}
                     onChange={(e) => setGeneratedContent(e.target.value)}
                     className="min-h-[150px] bg-white"
+                    placeholder="Generated content will appear here..."
                   />
                 </div>
                 
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy
+                <div className="flex gap-2 mb-4">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleCopyContent}
+                  >
+                    {copied ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy
+                      </>
+                    )}
                   </Button>
-                  <Button variant="outline" size="sm">
-                    <BookmarkPlus className="h-4 w-4 mr-2" />
-                    Save Draft
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleSaveDraft}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Draft
+                      </>
+                    )}
                   </Button>
-                  <Button className="bg-green-600 hover:bg-green-700">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Schedule Post
+                </div>
+
+                {/* Schedule Post Section */}
+                <div className="border-t pt-4">
+                  <h4 className="font-medium mb-3">Schedule Post</h4>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <Label htmlFor="schedule-date">Date</Label>
+                      <Input
+                        id="schedule-date"
+                        type="date"
+                        value={scheduledDate}
+                        onChange={(e) => setScheduledDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="schedule-time">Time</Label>
+                      <Input
+                        id="schedule-time"
+                        type="time"
+                        value={scheduledTime}
+                        onChange={(e) => setScheduledTime(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <Button 
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    onClick={handleSchedulePost}
+                    disabled={scheduling || !scheduledDate || !scheduledTime}
+                  >
+                    {scheduling ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Scheduling...
+                      </>
+                    ) : (
+                      <>
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Schedule Post
+                      </>
+                    )}
                   </Button>
                 </div>
               </CardContent>
@@ -280,7 +440,11 @@ export default function ContentStudio() {
             <CardContent>
               <div className="space-y-3">
                 {contentTemplates.map((template) => (
-                  <div key={template.id} className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <div 
+                    key={template.id} 
+                    className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => handleTemplateClick(template)}
+                  >
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="font-medium text-sm">{template.name}</p>
@@ -304,7 +468,12 @@ export default function ContentStudio() {
             <CardContent>
               <div className="flex flex-wrap gap-2">
                 {trendingTopics.map((topic) => (
-                  <Badge key={topic} variant="outline" className="cursor-pointer hover:bg-gray-100">
+                  <Badge 
+                    key={topic} 
+                    variant="outline" 
+                    className="cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleTopicClick(topic)}
+                  >
                     {topic}
                   </Badge>
                 ))}
@@ -320,7 +489,11 @@ export default function ContentStudio() {
             <CardContent>
               <div className="space-y-3">
                 {generatedIdeas.map((idea, index) => (
-                  <div key={index} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div 
+                    key={index} 
+                    className="p-3 bg-blue-50 rounded-lg border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors"
+                    onClick={() => setContentIdea(idea)}
+                  >
                     <p className="text-sm text-blue-900">{idea}</p>
                   </div>
                 ))}

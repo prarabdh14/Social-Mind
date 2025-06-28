@@ -16,7 +16,9 @@ import {
   Facebook,
   Linkedin,
   Clock,
-  Users
+  Users,
+  Loader2,
+  CalendarDays
 } from "lucide-react";
 
 export default function Calendar() {
@@ -27,11 +29,13 @@ export default function Calendar() {
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const platforms = {
     Instagram: { icon: Instagram, color: "bg-pink-500", name: "Instagram" },
     Twitter: { icon: Twitter, color: "bg-blue-400", name: "Twitter" },
     Facebook: { icon: Facebook, color: "bg-blue-600", name: "Facebook" },
+    LinkedIn: { icon: Linkedin, color: "bg-blue-700", name: "LinkedIn" },
     YouTube: { icon: Linkedin, color: "bg-red-500", name: "YouTube" }
   };
 
@@ -95,6 +99,20 @@ export default function Calendar() {
     setCurrentDate(newDate);
   };
 
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+  };
+
+  const isSelected = (date: Date) => {
+    return selectedDate && 
+           date.getDate() === selectedDate.getDate() &&
+           date.getMonth() === selectedDate.getMonth() &&
+           date.getFullYear() === selectedDate.getFullYear();
+  };
+
   const handleCreate = () => {
     setEditingPost(null);
     setModalOpen(true);
@@ -132,6 +150,38 @@ export default function Calendar() {
 
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'POSTED': return 'bg-green-100 text-green-800';
+      case 'SCHEDULED': return 'bg-blue-100 text-blue-800';
+      case 'DRAFT': return 'bg-gray-100 text-gray-800';
+      case 'FAILED': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Content Calendar</h1>
+            <p className="text-gray-600 mt-1">Visualize and manage your scheduled content</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <span className="ml-2 text-gray-600">Loading calendar...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -165,6 +215,13 @@ export default function Calendar() {
           <Button variant="outline" onClick={() => navigateMonth('next')}>
             <ChevronRight className="h-4 w-4" />
           </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setCurrentDate(new Date())}
+          >
+            Today
+          </Button>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -189,56 +246,61 @@ export default function Calendar() {
         <div className="lg:col-span-3">
           <Card>
             <CardContent className="p-6">
-              {loading ? (
-                <div className="text-center py-8">Loading posts...</div>
-              ) : (
-                <>
-                  {/* Calendar Grid */}
-                  <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
-                    {/* Week day headers */}
-                    {weekDays.map(day => (
-                      <div key={day} className="bg-gray-50 p-3 text-center text-sm font-medium text-gray-600">
-                        {day}
-                      </div>
-                    ))}
-                    
-                    {/* Calendar days */}
-                    {getDaysInMonth(currentDate).map((date, index) => (
-                      <div 
-                        key={index} 
-                        className={`bg-white p-2 min-h-[120px] ${!date ? 'bg-gray-50' : ''} hover:bg-gray-50 transition-colors`}
-                      >
-                        {date && (
-                          <>
-                            <div className="text-sm font-medium text-gray-900 mb-2">
-                              {date.getDate()}
-                            </div>
-                            <div className="space-y-1">
-                              {getPostsForDate(date).map(post => {
-                                const platformConfig = platforms[post.platform as keyof typeof platforms];
-                                const PlatformIcon = platformConfig?.icon;
-                                return (
-                                  <div 
-                                    key={post.id}
-                                    className={`text-xs p-1 rounded text-white cursor-pointer hover:opacity-80 ${platformConfig?.color || 'bg-gray-500'}`}
-                                    onClick={() => handleEdit(post)}
-                                  >
-                                    <div className="flex items-center gap-1">
-                                      {PlatformIcon && <PlatformIcon className="h-3 w-3" />}
-                                      <span className="truncate">{post.content.substring(0, 20)}...</span>
-                                    </div>
-                                    <div className="text-xs opacity-90">{post.status}</div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ))}
+              {/* Calendar Grid */}
+              <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
+                {/* Week day headers */}
+                {weekDays.map(day => (
+                  <div key={day} className="bg-gray-50 p-3 text-center text-sm font-medium text-gray-600">
+                    {day}
                   </div>
-                </>
-              )}
+                ))}
+                
+                {/* Calendar days */}
+                {getDaysInMonth(currentDate).map((date, index) => (
+                  <div 
+                    key={index} 
+                    className={`bg-white p-2 min-h-[120px] ${!date ? 'bg-gray-50' : ''} hover:bg-gray-50 transition-colors cursor-pointer ${
+                      isToday(date!) ? 'ring-2 ring-blue-500' : ''
+                    } ${isSelected(date!) ? 'bg-blue-50' : ''}`}
+                    onClick={() => date && setSelectedDate(date)}
+                  >
+                    {date && (
+                      <>
+                        <div className={`text-sm font-medium mb-2 ${
+                          isToday(date) ? 'text-blue-600 font-bold' : 'text-gray-900'
+                        }`}>
+                          {date.getDate()}
+                        </div>
+                        <div className="space-y-1">
+                          {getPostsForDate(date).map(post => {
+                            const platformConfig = platforms[post.platform as keyof typeof platforms];
+                            const PlatformIcon = platformConfig?.icon;
+                            return (
+                              <div 
+                                key={post.id}
+                                className={`text-xs p-1 rounded text-white cursor-pointer hover:opacity-80 ${platformConfig?.color || 'bg-gray-500'}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(post);
+                                }}
+                              >
+                                <div className="flex items-center gap-1">
+                                  {PlatformIcon && <PlatformIcon className="h-3 w-3" />}
+                                  <span className="truncate">{post.content.substring(0, 15)}...</span>
+                                </div>
+                                <div className="text-xs opacity-90 flex items-center justify-between">
+                                  <span>{post.status}</span>
+                                  <span>{formatTime(post.scheduledAt)}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -247,7 +309,10 @@ export default function Calendar() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Platform Overview</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CalendarDays className="h-5 w-5" />
+                Platform Overview
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -278,14 +343,62 @@ export default function Calendar() {
                   const count = posts.filter(p => p.status === status).length;
                   return (
                     <div key={status} className="flex items-center justify-between">
-                      <span className="text-sm capitalize">{status.toLowerCase()}</span>
-                      <Badge variant="secondary">{count}</Badge>
+                      <Badge className={getStatusColor(status)}>
+                        {status.toLowerCase()}
+                      </Badge>
+                      <span className="text-sm font-medium">{count}</span>
                     </div>
                   );
                 })}
               </div>
             </CardContent>
           </Card>
+
+          {selectedDate && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  {selectedDate.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {getPostsForDate(selectedDate).length === 0 ? (
+                    <p className="text-sm text-gray-500">No posts scheduled for this date</p>
+                  ) : (
+                    getPostsForDate(selectedDate).map(post => {
+                      const platformConfig = platforms[post.platform as keyof typeof platforms];
+                      const PlatformIcon = platformConfig?.icon;
+                      return (
+                        <div 
+                          key={post.id}
+                          className="p-2 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                          onClick={() => handleEdit(post)}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            {PlatformIcon && <PlatformIcon className="h-4 w-4" />}
+                            <span className="text-sm font-medium">{post.platform}</span>
+                            <Badge className={getStatusColor(post.status)}>
+                              {post.status.toLowerCase()}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-gray-600 truncate">{post.content}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {formatTime(post.scheduledAt)}
+                          </p>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 

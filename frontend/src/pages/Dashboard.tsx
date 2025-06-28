@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { postService } from "../services/api";
-import { Post } from "../types";
+import { postService, dashboardService } from "../services/api";
+import { Post, DashboardAnalytics, DashboardInsights, SocialMediaAccount } from "../types";
 import PostComposer from "../components/dashboard/PostComposer";
+import { useUser } from "../contexts/UserContext";
 import { 
   TrendingUp, 
   Users, 
@@ -15,46 +17,43 @@ import {
   Instagram,
   Twitter,
   Facebook,
-  PenTool
+  PenTool,
+  Loader2
 } from "lucide-react";
 
 export default function Dashboard() {
+  const { user } = useUser();
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
+  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
+  const [insights, setInsights] = useState<DashboardInsights | null>(null);
+  const [accounts, setAccounts] = useState<SocialMediaAccount[]>([]);
   const [loading, setLoading] = useState(false);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
 
-  const metrics = [
-    {
-      title: "Total Reach",
-      value: "284.5K",
-      change: "+12.5%",
-      trend: "up",
-      icon: TrendingUp,
-    },
-    {
-      title: "Followers",
-      value: "45.2K",
-      change: "+5.2%",
-      trend: "up",
-      icon: Users,
-    },
-    {
-      title: "Engagement",
-      value: "8.4%",
-      change: "+0.8%",
-      trend: "up",
-      icon: Heart,
-    },
-    {
-      title: "Comments",
-      value: "1,247",
-      change: "+18.3%",
-      trend: "up",
-      icon: MessageCircle,
-    },
-  ];
+  const fetchDashboardData = async () => {
+    setAnalyticsLoading(true);
+    setError(null);
+    try {
+      const [analyticsData, insightsData, accountsData] = await Promise.all([
+        dashboardService.getAnalytics(),
+        dashboardService.getInsights(),
+        dashboardService.getAccounts()
+      ]);
+      
+      setAnalytics(analyticsData);
+      setInsights(insightsData);
+      setAccounts(accountsData);
+    } catch (err) {
+      setError('Failed to fetch dashboard data');
+      console.error('Dashboard data fetch error:', err);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
 
   const fetchPosts = async () => {
     setLoading(true);
@@ -70,6 +69,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    fetchDashboardData();
     fetchPosts();
   }, []);
 
@@ -129,6 +129,7 @@ export default function Dashboard() {
       setModalOpen(false);
       setEditingPost(null);
       fetchPosts();
+      fetchDashboardData(); // Refresh analytics after creating/updating post
     } catch (err) {
       setError('Failed to save post');
     }
@@ -143,13 +144,49 @@ export default function Dashboard() {
     engagement: post.status === 'POSTED' ? 'View analytics' : 'Scheduled'
   }));
 
+  // Create metrics array from analytics data
+  const metrics = analytics ? [
+    {
+      title: "Total Reach",
+      value: analytics.metrics.totalReach.value,
+      change: analytics.metrics.totalReach.change,
+      trend: analytics.metrics.totalReach.trend,
+      icon: TrendingUp,
+    },
+    {
+      title: "Followers",
+      value: analytics.metrics.followers.value,
+      change: analytics.metrics.followers.change,
+      trend: analytics.metrics.followers.trend,
+      icon: Users,
+    },
+    {
+      title: "Engagement",
+      value: analytics.metrics.engagement.value,
+      change: analytics.metrics.engagement.change,
+      trend: analytics.metrics.engagement.trend,
+      icon: Heart,
+    },
+    {
+      title: "Comments",
+      value: analytics.metrics.comments.value,
+      change: analytics.metrics.comments.change,
+      trend: analytics.metrics.comments.trend,
+      icon: MessageCircle,
+    },
+  ] : [];
+
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Welcome back, Sarah!</h1>
-          <p className="text-gray-600 mt-1">Here's what's happening with your social media today.</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Welcome back, {user?.fullName || 'User'}!
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Here's what's happening with your social media today.
+          </p>
         </div>
         <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleCreate}>
           <Calendar className="h-4 w-4 mr-2" />
@@ -161,23 +198,43 @@ export default function Dashboard() {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {metrics.map((metric) => (
-          <Card key={metric.title} className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                {metric.title}
-              </CardTitle>
-              <metric.icon className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">{metric.value}</div>
-              <p className="text-xs text-green-600 flex items-center mt-1">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                {metric.change} from last month
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+        {analyticsLoading ? (
+          // Loading skeleton for metrics
+          Array.from({ length: 4 }).map((_, index) => (
+            <Card key={index} className="hover:shadow-md transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                <div className="h-4 w-4 bg-gray-200 rounded animate-pulse"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-gray-200 rounded w-16 animate-pulse mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          metrics.map((metric) => (
+            <Card key={metric.title} className="hover:shadow-md transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  {metric.title}
+                </CardTitle>
+                <metric.icon className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900">{metric.value}</div>
+                <p className={`text-xs flex items-center mt-1 ${
+                  metric.trend === 'up' ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  <TrendingUp className={`h-3 w-3 mr-1 ${
+                    metric.trend === 'down' ? 'rotate-180' : ''
+                  }`} />
+                  {metric.change} from last month
+                </p>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -192,7 +249,10 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             {loading ? (
-              <div className="text-center py-4">Loading posts...</div>
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                <span className="ml-2">Loading posts...</span>
+              </div>
             ) : recentPosts.length > 0 ? (
               recentPosts.map((post) => {
                 const PlatformIcon = getPlatformIcon(post.platform);
@@ -228,7 +288,7 @@ export default function Dashboard() {
           <CardContent className="space-y-3">
             <Button 
               className="w-full justify-start bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-              onClick={() => window.location.href = '/dashboard/content'}
+              onClick={() => navigate('/dashboard/content')}
             >
               <PenTool className="h-4 w-4 mr-2" />
               Generate AI Content
@@ -236,7 +296,7 @@ export default function Dashboard() {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => window.location.href = '/dashboard/calendar'}
+              onClick={() => navigate('/dashboard/calendar')}
             >
               <Calendar className="h-4 w-4 mr-2" />
               Schedule Posts for Week
@@ -244,7 +304,7 @@ export default function Dashboard() {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => window.location.href = '/dashboard/analytics'}
+              onClick={() => navigate('/dashboard/analytics')}
             >
               <TrendingUp className="h-4 w-4 mr-2" />
               View Analytics Report
@@ -252,42 +312,57 @@ export default function Dashboard() {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => window.location.href = '/dashboard/accounts'}
+              onClick={() => navigate('/dashboard/accounts')}
             >
               <Users className="h-4 w-4 mr-2" />
-              Manage Connected Accounts
+              Manage Connected Accounts ({accounts.length})
             </Button>
           </CardContent>
         </Card>
       </div>
 
       {/* AI Insights */}
-      <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-              <TrendingUp className="h-3 w-3 text-white" />
+      {insights && (
+        <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                <TrendingUp className="h-3 w-3 text-white" />
+              </div>
+              AI Insights & Recommendations
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="p-3 bg-white rounded-lg border border-blue-200">
+                <p className="font-medium text-blue-900">{insights.bestTimeToPost.title}</p>
+                <p className="text-blue-700 text-sm">{insights.bestTimeToPost.description}</p>
+              </div>
+              <div className="p-3 bg-white rounded-lg border border-blue-200">
+                <p className="font-medium text-blue-900">{insights.contentPerformance.title}</p>
+                <p className="text-blue-700 text-sm">{insights.contentPerformance.description}</p>
+              </div>
+              <div className="p-3 bg-white rounded-lg border border-blue-200">
+                <p className="font-medium text-blue-900">{insights.trendingTopics.title}</p>
+                <p className="text-blue-700 text-sm">{insights.trendingTopics.description}</p>
+              </div>
+              {insights.recommendations.length > 0 && (
+                <div className="p-3 bg-white rounded-lg border border-blue-200">
+                  <p className="font-medium text-blue-900 mb-2">Recommendations</p>
+                  <ul className="text-blue-700 text-sm space-y-1">
+                    {insights.recommendations.map((rec, index) => (
+                      <li key={index} className="flex items-start">
+                        <span className="text-blue-500 mr-2">•</span>
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
-            AI Insights & Recommendations
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="p-3 bg-white rounded-lg border border-blue-200">
-              <p className="font-medium text-blue-900">Best Time to Post</p>
-              <p className="text-blue-700 text-sm">Today: 2:30 PM - 4:00 PM for maximum engagement</p>
-            </div>
-            <div className="p-3 bg-white rounded-lg border border-blue-200">
-              <p className="font-medium text-blue-900">Content Performance</p>
-              <p className="text-blue-700 text-sm">Your Instagram posts get 40% more engagement than Twitter</p>
-            </div>
-            <div className="p-3 bg-white rounded-lg border border-blue-200">
-              <p className="font-medium text-blue-900">Trending Topics</p>
-              <p className="text-blue-700 text-sm">#AI and #SocialMedia are trending in your niche</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {modalOpen && (
         <PostComposer

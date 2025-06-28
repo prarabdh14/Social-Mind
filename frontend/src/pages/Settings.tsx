@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -7,6 +7,8 @@ import { Switch } from "../components/ui/switch";
 import { Textarea } from "../components/ui/textarea";
 import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { useUser } from "../contexts/UserContext";
+import { authService } from "../services/auth";
 import { 
   User,
   Bell,
@@ -18,11 +20,20 @@ import {
   Sun,
   Download,
   Trash2,
-  Key
+  Key,
+  Save,
+  Loader2,
+  CheckCircle
 } from "lucide-react";
 
 export default function Settings() {
+  const { user } = useUser();
   const [darkMode, setDarkMode] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
   const [notifications, setNotifications] = useState({
     email: true,
     push: true,
@@ -30,16 +41,89 @@ export default function Settings() {
     scheduleReminders: true,
     weeklyReports: false
   });
+  
   const [profile, setProfile] = useState({
-    name: "Sarah Johnson",
-    email: "sarah@socialmind.com",
-    company: "SocialMind AI",
-    bio: "Social media manager passionate about AI-powered content creation"
+    name: user?.fullName || "",
+    email: user?.email || "",
+    company: "",
+    bio: ""
   });
+
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        name: user.fullName,
+        email: user.email,
+        company: "",
+        bio: ""
+      });
+    }
+  }, [user]);
 
   const handleNotificationChange = (key: string, value: boolean) => {
     setNotifications(prev => ({ ...prev, [key]: value }));
   };
+
+  const handleProfileSave = async () => {
+    setSaving(true);
+    setError(null);
+    setSuccess(false);
+    
+    try {
+      // In a real app, you would call an API to update the profile
+      // For now, we'll simulate the update
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setError('Failed to save profile changes');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    setLoading(true);
+    try {
+      // Simulate data export
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Create a dummy CSV file
+      const csvContent = "data:text/csv;charset=utf-8," + 
+        "Post ID,Content,Platform,Status,Scheduled Date\n" +
+        "1,Sample post content,Instagram,SCHEDULED,2024-01-15\n" +
+        "2,Another sample post,Twitter,POSTED,2024-01-14";
+      
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "socialmind_data.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      setError('Failed to export data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      // Handle account deletion
+      console.log('Account deletion requested');
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <span className="ml-2 text-gray-600">Loading user data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -49,6 +133,14 @@ export default function Settings() {
           <p className="text-gray-600 mt-1">Manage your account and application preferences</p>
         </div>
       </div>
+
+      {error && <div className="text-red-500">{error}</div>}
+      {success && (
+        <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
+          <CheckCircle className="h-4 w-4" />
+          Profile updated successfully!
+        </div>
+      )}
 
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList className="grid grid-cols-5 w-fit">
@@ -75,6 +167,7 @@ export default function Settings() {
                     id="name"
                     value={profile.name}
                     onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                    placeholder="Enter your full name"
                   />
                 </div>
                 <div>
@@ -84,6 +177,7 @@ export default function Settings() {
                     type="email"
                     value={profile.email}
                     onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                    placeholder="Enter your email"
                   />
                 </div>
               </div>
@@ -93,6 +187,7 @@ export default function Settings() {
                   id="company"
                   value={profile.company}
                   onChange={(e) => setProfile({ ...profile, company: e.target.value })}
+                  placeholder="Enter your company name"
                 />
               </div>
               <div>
@@ -102,10 +197,25 @@ export default function Settings() {
                   value={profile.bio}
                   onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
                   rows={3}
+                  placeholder="Tell us about yourself..."
                 />
               </div>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                Save Changes
+              <Button 
+                className="bg-blue-600 hover:bg-blue-700" 
+                onClick={handleProfileSave}
+                disabled={saving}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>
@@ -228,7 +338,7 @@ export default function Settings() {
                 Security Settings
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="current-password">Current Password</Label>
                 <Input
@@ -254,6 +364,7 @@ export default function Settings() {
                 />
               </div>
               <Button className="bg-blue-600 hover:bg-blue-700">
+                <Key className="h-4 w-4 mr-2" />
                 Update Password
               </Button>
             </CardContent>
@@ -261,26 +372,16 @@ export default function Settings() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Key className="h-5 w-5" />
-                API Keys
-              </CardTitle>
+              <CardTitle>Two-Factor Authentication</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Production API Key</p>
-                    <p className="text-sm text-gray-600">sk-proj-*****-****-****-****</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Regenerate
-                  </Button>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Enable 2FA</p>
+                  <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
                 </div>
+                <Switch />
               </div>
-              <Button variant="outline">
-                Generate New API Key
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -293,38 +394,14 @@ export default function Settings() {
                 Billing Information
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold">Pro Plan</h3>
-                    <p className="text-sm text-gray-600">$29/month 2 Next billing: Dec 15, 2024</p>
-                  </div>
-                  <Badge className="bg-green-100 text-green-800">Active</Badge>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium mb-3">Payment Method</h4>
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">2 22 22 22  22 22 22 22  22 22 22 22 4242</p>
-                      <p className="text-sm text-gray-600">Expires 12/26</p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      Update
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
+            <CardContent>
+              <div className="text-center py-8">
+                <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No billing information</h3>
+                <p className="text-gray-600 mb-4">You're currently on the free plan</p>
                 <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Zap className="h-4 w-4 mr-2" />
                   Upgrade Plan
-                </Button>
-                <Button variant="outline">
-                  Billing History
                 </Button>
               </div>
             </CardContent>
@@ -336,14 +413,14 @@ export default function Settings() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Zap className="h-5 w-5" />
-                Application Preferences
+                App Preferences
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
                   <Label htmlFor="dark-mode">Dark Mode</Label>
-                  <p className="text-sm text-gray-600">Switch to dark theme</p>
+                  <p className="text-sm text-gray-600">Switch between light and dark themes</p>
                 </div>
                 <Switch
                   id="dark-mode"
@@ -355,73 +432,45 @@ export default function Settings() {
               <div className="flex items-center justify-between">
                 <div>
                   <Label htmlFor="auto-save">Auto-save Drafts</Label>
-                  <p className="text-sm text-gray-600">Automatically save content as you type</p>
+                  <p className="text-sm text-gray-600">Automatically save post drafts</p>
                 </div>
-                <Switch
-                  id="auto-save"
-                  defaultChecked={true}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="ai-suggestions">AI Suggestions</Label>
-                  <p className="text-sm text-gray-600">Show AI content suggestions</p>
-                </div>
-                <Switch
-                  id="ai-suggestions"
-                  defaultChecked={true}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="timezone">Timezone</Label>
-                <Input
-                  id="timezone"
-                  defaultValue="America/New_York (UTC-5)"
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="language">Language</Label>
-                <Input
-                  id="language"
-                  defaultValue="English (US)"
-                  className="mt-1"
-                />
+                <Switch defaultChecked />
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Download className="h-5 w-5" />
-                Data Management
-              </CardTitle>
+              <CardTitle>Data Management</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Export Data</p>
-                  <p className="text-sm text-gray-600">Download all your content and analytics</p>
-                </div>
-                <Button variant="outline">
-                  Export
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-red-600">Delete Account</p>
-                  <p className="text-sm text-gray-600">Permanently delete your account and data</p>
-                </div>
-                <Button variant="destructive">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </Button>
-              </div>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={handleExportData}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export My Data
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={handleDeleteAccount}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Account
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

@@ -13,6 +13,7 @@ import Onboarding from "./pages/Onboarding";
 import ScheduleSetup from "./pages/ScheduleSetup";
 import Calendar from "./pages/Calendar";
 import Accounts from "./pages/Accounts";
+import SocialAccounts from "./pages/SocialAccounts";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -35,6 +36,7 @@ const App = () => (
               <Route path="analytics" element={<Analytics />} />
               <Route path="calendar" element={<Calendar />} />
               <Route path="accounts" element={<Accounts />} />
+              <Route path="social-accounts" element={<SocialAccounts />} />
               <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
