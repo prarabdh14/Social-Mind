@@ -8,6 +8,7 @@ import axios from 'axios';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import nodemailer from 'nodemailer';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -87,6 +88,15 @@ const authenticateToken = async (req: AuthenticatedRequest, res: Response, next:
   }
 };
 
+// Nodemailer transporter setup (use your real credentials in production)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS,
+  },
+});
+
 // Sign up endpoint
 app.post('/auth/signup', async (req, res) => {
   try {
@@ -149,40 +159,55 @@ app.post('/auth/signup', async (req, res) => {
   }
 });
 
-// Sign in endpoint
+// Sign in endpoint (with OTP 2FA)
 app.post('/auth/signin', async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Validate input
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }
-
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-
+    const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
-
-    // Check password
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
-
-    // Generate token
-    const token = generateToken(user.id);
-
-    // Return user data without password
-    const { password: _, ...userWithoutPassword } = user;
-    res.json({ user: userWithoutPassword, token });
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
+    await prisma.user.update({ where: { email }, data: { otp, otpExpiry } });
+    // Send OTP via email
+    await transporter.sendMail({
+      to: email,
+      subject: 'Your Social Mind Login OTP',
+      text: `Your OTP is: ${otp}`,
+    });
+    return res.json({ requireOtp: true });
   } catch (error) {
     console.error('Signin error:', error);
     res.status(500).json({ message: 'Error signing in' });
+  }
+});
+
+// OTP verification endpoint
+app.post('/auth/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || user.otp !== otp || !user.otpExpiry || new Date() > user.otpExpiry) {
+      return res.status(401).json({ message: 'Invalid or expired OTP' });
+    }
+    // Clear OTP after use
+    await prisma.user.update({ where: { email }, data: { otp: null, otpExpiry: null } });
+    // Generate token
+    const token = generateToken(user.id);
+    const { password: __, otp: ___, otpExpiry: ____, ...userWithoutSensitive } = user;
+    return res.json({ token, user: userWithoutSensitive });
+  } catch (error) {
+    console.error('OTP verify error:', error);
+    res.status(500).json({ message: 'Error verifying OTP' });
   }
 });
 
