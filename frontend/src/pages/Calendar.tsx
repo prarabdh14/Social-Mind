@@ -31,6 +31,7 @@ export default function Calendar() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
 
   const platforms = {
     Instagram: { icon: Instagram, color: "bg-pink-500", name: "Instagram" },
@@ -48,6 +49,7 @@ export default function Calendar() {
       setPosts(data);
     } catch (err) {
       setError('Failed to fetch posts');
+      console.error('Error fetching posts:', err);
     } finally {
       setLoading(false);
     }
@@ -80,7 +82,7 @@ export default function Calendar() {
     return days;
   };
 
-  const getPostsForDate = (date: Date) => {
+  const getPostsForDate = (date: Date | null) => {
     if (!date) return [];
     return posts.filter(post => {
       const postDate = new Date(post.scheduledAt);
@@ -91,25 +93,34 @@ export default function Calendar() {
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
-    const newDate = new Date(currentDate);
-    if (direction === 'prev') {
-      newDate.setMonth(newDate.getMonth() - 1);
-    } else {
-      newDate.setMonth(newDate.getMonth() + 1);
+    try {
+      const newDate = new Date(currentDate);
+      if (direction === 'prev') {
+        newDate.setDate(1); // Set to first day of current month
+        newDate.setMonth(newDate.getMonth() - 1);
+      } else {
+        newDate.setDate(1); // Set to first day of current month
+        newDate.setMonth(newDate.getMonth() + 1);
+      }
+      setCurrentDate(newDate);
+    } catch (error) {
+      console.error('Error navigating month:', error);
+      // Fallback to current date if there's an error
+      setCurrentDate(new Date());
     }
-    setCurrentDate(newDate);
   };
 
-  const isToday = (date: Date) => {
+  const isToday = (date: Date | null) => {
+    if (!date) return false;
     const today = new Date();
     return date.getDate() === today.getDate() &&
            date.getMonth() === today.getMonth() &&
            date.getFullYear() === today.getFullYear();
   };
 
-  const isSelected = (date: Date) => {
-    return selectedDate && 
-           date.getDate() === selectedDate.getDate() &&
+  const isSelected = (date: Date | null) => {
+    if (!date || !selectedDate) return false;
+    return date.getDate() === selectedDate.getDate() &&
            date.getMonth() === selectedDate.getMonth() &&
            date.getFullYear() === selectedDate.getFullYear();
   };
@@ -128,6 +139,26 @@ export default function Calendar() {
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+
+  // Add error boundary for the component
+  if (renderError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Content Calendar</h1>
+            <p className="text-gray-600 mt-1">Visualize and manage your scheduled content</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Something went wrong with the calendar</p>
+            <Button onClick={() => setRenderError(null)}>Try Again</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -220,49 +251,57 @@ export default function Calendar() {
                 ))}
                 
                 {/* Calendar days */}
-                {getDaysInMonth(currentDate).map((date, index) => (
-                  <div 
-                    key={index} 
-                    className={`bg-white p-2 min-h-[120px] ${!date ? 'bg-gray-50' : ''} hover:bg-gray-50 transition-colors cursor-pointer ${
-                      isToday(date!) ? 'ring-2 ring-blue-500' : ''
-                    } ${isSelected(date!) ? 'bg-blue-50' : ''}`}
-                    onClick={() => date && setSelectedDate(date)}
-                  >
-                    {date && (
-                      <>
-                        <div className={`text-sm font-medium mb-2 ${
-                          isToday(date) ? 'text-blue-600 font-bold' : 'text-gray-900'
-                        }`}>
-                          {date.getDate()}
-                        </div>
-                        <div className="space-y-1">
-                          {getPostsForDate(date).map(post => {
-                            const platformConfig = platforms[post.platform as keyof typeof platforms];
-                            const PlatformIcon = platformConfig?.icon;
-                            return (
-                              <div 
-                                key={post.id}
-                                className={`text-xs p-1 rounded text-white cursor-pointer hover:opacity-80 ${platformConfig?.color || 'bg-gray-500'}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                }}
-                              >
-                                <div className="flex items-center gap-1">
-                                  {PlatformIcon && <PlatformIcon className="h-3 w-3" />}
-                                  <span className="truncate">{post.content.substring(0, 15)}...</span>
-                                </div>
-                                <div className="text-xs opacity-90 flex items-center justify-between">
-                                  <span>{post.status}</span>
-                                  <span>{formatTime(post.scheduledAt)}</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
+                {(() => {
+                  try {
+                    return getDaysInMonth(currentDate).map((date, index) => (
+                      <div 
+                        key={index} 
+                        className={`bg-white p-2 min-h-[120px] ${!date ? 'bg-gray-50' : ''} hover:bg-gray-50 transition-colors cursor-pointer ${
+                          date && isToday(date) ? 'ring-2 ring-blue-500' : ''
+                        } ${date && isSelected(date) ? 'bg-blue-50' : ''}`}
+                        onClick={() => date && setSelectedDate(date)}
+                      >
+                        {date && (
+                          <>
+                            <div className={`text-sm font-medium mb-2 ${
+                              isToday(date) ? 'text-blue-600 font-bold' : 'text-gray-900'
+                            }`}>
+                              {date.getDate()}
+                            </div>
+                            <div className="space-y-1">
+                              {getPostsForDate(date).map(post => {
+                                const platformConfig = platforms[post.platform as keyof typeof platforms];
+                                const PlatformIcon = platformConfig?.icon;
+                                return (
+                                  <div 
+                                    key={post.id}
+                                    className={`text-xs p-1 rounded text-white cursor-pointer hover:opacity-80 ${platformConfig?.color || 'bg-gray-500'}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                    }}
+                                  >
+                                    <div className="flex items-center gap-1">
+                                      {PlatformIcon && <PlatformIcon className="h-3 w-3" />}
+                                      <span className="truncate">{post.content.substring(0, 15)}...</span>
+                                    </div>
+                                    <div className="text-xs opacity-90 flex items-center justify-between">
+                                      <span>{post.status}</span>
+                                      <span>{formatTime(post.scheduledAt)}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ));
+                  } catch (error) {
+                    console.error('Error rendering calendar:', error);
+                    setRenderError('Calendar rendering error');
+                    return <div className="col-span-7 p-4 text-center text-red-600">Error rendering calendar</div>;
+                  }
+                })()}
               </div>
             </CardContent>
           </Card>

@@ -20,6 +20,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, initialMode = 'login' 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [otp, setOtp] = useState('');
+  const [showOtpInput, setShowOtpInput] = useState(false);
   const navigate = useNavigate();
   const { login } = useUser();
 
@@ -41,15 +43,41 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, initialMode = 'login' 
       if (isLogin) {
         // Sign in
         response = await authService.signIn({ email, password });
+        
+        // Check if OTP is required
+        if ('requireOtp' in response && response.requireOtp) {
+          setShowOtpInput(true);
+          setIsLoading(false);
+          return;
+        }
       } else {
         // Register
         response = await authService.signUp({ email, password, name });
       }
+      
+      // Handle successful login/register
       await login(response.token, response.user);
       navigate('/dashboard');
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOTPSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await authService.verifyOTP({ email, otp });
+      await login(response.token, response.user);
+      navigate('/dashboard');
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid OTP. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -100,10 +128,13 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, initialMode = 'login' 
 
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {isLogin ? 'Welcome Back' : 'Create Your Account'}
+            {showOtpInput ? 'Enter OTP' : (isLogin ? 'Welcome Back' : 'Create Your Account')}
           </h2>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            {isLogin ? 'Sign in to access your dashboard' : 'Join us to get started'}
+            {showOtpInput 
+              ? 'Enter the 6-digit code sent to your email'
+              : (isLogin ? 'Sign in to access your dashboard' : 'Join us to get started')
+            }
           </p>
         </div>
 
@@ -114,7 +145,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, initialMode = 'login' 
         )}
 
         {/* Google Sign In Button */}
-        {isGoogleEnabled && (
+        {isGoogleEnabled && !showOtpInput && (
           <>
             <button
               onClick={() => googleLogin()}
@@ -149,91 +180,146 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, initialMode = 'login' 
         )}
 
         {/* Email/Password Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
+        {!showOtpInput ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {!isLogin && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#4ECDC4] focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors duration-200"
+                  placeholder="Enter your full name"
+                  required={!isLogin}
+                />
+              </div>
+            )}
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Full Name
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#4ECDC4] focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors duration-200"
+                  placeholder="Enter your email"
+                  required
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#4ECDC4] focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors duration-200"
+                  placeholder="Enter your password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-[#4ECDC4] text-white py-3 rounded-lg hover:bg-[#45b7af] transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  {isLogin ? 'Signing in...' : 'Creating account...'}
+                </div>
+              ) : (
+                isLogin ? 'Sign In' : 'Create Account'
+              )}
+            </button>
+          </form>
+        ) : (
+          /* OTP Input Form */
+          <form onSubmit={handleOTPSubmit} className="space-y-4">
+            <div className="text-center mb-4">
+              <p className="text-gray-600 dark:text-gray-400">
+                We've sent a 6-digit OTP to <strong>{email}</strong>
+              </p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Enter OTP
               </label>
               <input
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#4ECDC4] focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors duration-200"
-                placeholder="Enter your full name"
-                required={!isLogin}
-              />
-            </div>
-          )}
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#4ECDC4] focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors duration-200"
-                placeholder="Enter your email"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#4ECDC4] focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors duration-200 text-center text-lg tracking-widest"
+                placeholder="000000"
+                maxLength={6}
                 required
               />
             </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#4ECDC4] focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors duration-200"
-                placeholder="Enter your password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                {showPassword ? (
-                  <EyeOff className="w-5 h-5" />
-                ) : (
-                  <Eye className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-[#4ECDC4] text-white py-3 rounded-lg hover:bg-[#45b7af] transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <div className="flex items-center justify-center">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                {isLogin ? 'Signing in...' : 'Creating account...'}
-              </div>
-            ) : (
-              isLogin ? 'Sign In' : 'Create Account'
-            )}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-[#4ECDC4] text-white py-3 rounded-lg hover:bg-[#45b7af] transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Verifying OTP...
+                </div>
+              ) : (
+                'Verify OTP'
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowOtpInput(false);
+                setOtp('');
+                setError(null);
+              }}
+              className="w-full text-[#4ECDC4] hover:text-[#45b7af] transition-colors duration-300"
+            >
+              Back to Login
+            </button>
+          </form>
+        )}
 
         <div className="mt-6 text-center">
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-[#4ECDC4] hover:text-[#45b7af] transition-colors duration-300"
-          >
-            {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-          </button>
+          {!showOtpInput && (
+            <button
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-[#4ECDC4] hover:text-[#45b7af] transition-colors duration-300"
+            >
+              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+            </button>
+          )}
         </div>
       </div>
     </div>

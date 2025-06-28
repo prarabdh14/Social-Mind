@@ -9,6 +9,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
+import type { Express } from 'express';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -46,9 +47,18 @@ interface AuthenticatedRequest extends Request {
     id: string;
     email: string;
     fullName: string;
-    profilePicture?: string;
+    profilePicture?: string | null;
   };
   id?: string;
+}
+
+// Extend Express Request for multer file
+declare global {
+  namespace Express {
+    interface Request {
+      file?: Express.Multer.File;
+    }
+  }
 }
 
 // Helper function to generate JWT token
@@ -95,7 +105,279 @@ const transporter = nodemailer.createTransport({
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_PASS,
   },
+  debug: true, // Enable debug output
+  logger: true, // Log to console
 });
+
+// Verify email configuration
+transporter.verify(function(error: any, success: any) {
+  if (error) {
+    console.error('Email configuration error:', error);
+  } else {
+    console.log('Email server is ready to send messages');
+  }
+});
+
+// Email template functions
+const sendWelcomeEmail = async (email: string, name: string) => {
+  try {
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Welcome to Social Mind!</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .feature { margin: 15px 0; padding: 15px; background: white; border-radius: 5px; border-left: 4px solid #667eea; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 Welcome to Social Mind!</h1>
+            <p>Your journey to better social media management starts now</p>
+          </div>
+          <div class="content">
+            <h2>Hi ${name},</h2>
+            <p>Welcome to Social Mind! We're excited to have you on board and help you take your social media presence to the next level.</p>
+            
+            <h3>🚀 What you can do with Social Mind:</h3>
+            <div class="feature">
+              <strong>📅 Content Planning:</strong> Get AI-powered content ideas and posting schedules
+            </div>
+            <div class="feature">
+              <strong>📊 Analytics Dashboard:</strong> Track your performance across all platforms
+            </div>
+            <div class="feature">
+              <strong>🔄 Multi-Platform Management:</strong> Manage Instagram, YouTube, Twitter, and more from one place
+            </div>
+            <div class="feature">
+              <strong>🤖 AI Caption Generator:</strong> Create engaging captions with the help of AI
+            </div>
+            
+            <p>Ready to get started? Log in to your dashboard and start creating amazing content!</p>
+            
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard" class="button">Go to Dashboard</a>
+            
+            <p>If you have any questions, feel free to reach out to our support team.</p>
+            
+            <p>Best regards,<br>The Social Mind Team</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await transporter.sendMail({
+      to: email,
+      subject: '🎉 Welcome to Social Mind - Your Social Media Management Journey Begins!',
+      html: htmlContent,
+    });
+    
+    console.log(`Welcome email sent to ${email}`);
+  } catch (error) {
+    console.error('Error sending welcome email:', error);
+  }
+};
+
+const sendCalendarAdditionEmail = async (email: string, name: string, contentIdea: string, scheduledDate: string, platform: string) => {
+  try {
+    console.log('Preparing calendar addition email for:', { email, name, platform, scheduledDate });
+    
+    // Check if email credentials are configured
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
+      console.error('Gmail credentials not configured. Please set GMAIL_USER and GMAIL_PASS in .env file');
+      return;
+    }
+    
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Content Added to Calendar</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .content-card { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #4CAF50; }
+          .button { display: inline-block; background: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>✅ Content Added to Calendar</h1>
+            <p>Your content has been successfully scheduled</p>
+          </div>
+          <div class="content">
+            <h2>Hi ${name},</h2>
+            <p>Great news! Your content has been successfully added to your calendar.</p>
+            
+            <div class="content-card">
+              <h3>📝 Content Details:</h3>
+              <p><strong>Content Idea:</strong> ${contentIdea.substring(0, 100)}${contentIdea.length > 100 ? '...' : ''}</p>
+              <p><strong>Platform:</strong> ${platform}</p>
+              <p><strong>Scheduled Date:</strong> ${new Date(scheduledDate).toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</p>
+            </div>
+            
+            <p>Your content is now scheduled and ready to go! You'll receive a reminder the day before it's scheduled to post.</p>
+            
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/calendar" class="button">View Calendar</a>
+            
+            <p>Keep creating amazing content! 🚀</p>
+            
+            <p>Best regards,<br>The Social Mind Team</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    console.log('Sending email via nodemailer...');
+    
+    const result = await transporter.sendMail({
+      to: email,
+      subject: '✅ Content Added to Calendar - Social Mind',
+      html: htmlContent,
+    });
+    
+    console.log('Email sent successfully:', { messageId: result.messageId, to: email });
+  } catch (error) {
+    console.error('Error sending calendar addition email:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      email,
+      name,
+      platform,
+      scheduledDate
+    });
+    throw error; // Re-throw to be caught by the calling function
+  }
+};
+
+const sendDailyReminderEmail = async (email: string, name: string, tomorrowPosts: any[]) => {
+  try {
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Tomorrow's Scheduled Content</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .post-card { background: white; padding: 15px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #FF9800; }
+          .platform-badge { display: inline-block; background: #FF9800; color: white; padding: 4px 8px; border-radius: 3px; font-size: 12px; margin-right: 10px; }
+          .button { display: inline-block; background: #FF9800; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>📅 Tomorrow's Content Schedule</h1>
+            <p>Here's what's scheduled for tomorrow</p>
+          </div>
+          <div class="content">
+            <h2>Hi ${name},</h2>
+            <p>Here's a reminder of your scheduled content for tomorrow:</p>
+            
+            ${tomorrowPosts.length > 0 ? tomorrowPosts.map(post => `
+              <div class="post-card">
+                <span class="platform-badge">${post.platform}</span>
+                <strong>Scheduled for: ${new Date(post.scheduledAt).toLocaleTimeString()}</strong>
+                <p>${post.content.substring(0, 150)}${post.content.length > 150 ? '...' : ''}</p>
+              </div>
+            `).join('') : '<p><em>No content scheduled for tomorrow.</em></p>'}
+            
+            <p>Make sure everything is ready to go! 🚀</p>
+            
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/calendar" class="button">View Calendar</a>
+            
+            <p>Best regards,<br>The Social Mind Team</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await transporter.sendMail({
+      to: email,
+      subject: '📅 Tomorrow\'s Content Schedule - Social Mind',
+      html: htmlContent,
+    });
+    
+    console.log(`Daily reminder email sent to ${email}`);
+  } catch (error) {
+    console.error('Error sending daily reminder email:', error);
+  }
+};
+
+// Function to send daily reminders to all users
+const sendDailyReminders = async () => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+      },
+    });
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+
+    const dayAfterTomorrow = new Date(tomorrow);
+    dayAfterTomorrow.setDate(tomorrow.getDate() + 1);
+
+    for (const user of users) {
+      const tomorrowPosts = await prisma.post.findMany({
+        where: {
+          userId: user.id,
+          scheduledAt: {
+            gte: tomorrow,
+            lt: dayAfterTomorrow,
+          },
+          status: 'SCHEDULED',
+        },
+        orderBy: {
+          scheduledAt: 'asc',
+        },
+      });
+
+      if (tomorrowPosts.length > 0) {
+        await sendDailyReminderEmail(user.email, user.fullName, tomorrowPosts);
+      }
+    }
+  } catch (error) {
+    console.error('Error sending daily reminders:', error);
+  }
+};
+
+// Schedule daily reminders (run at 6 PM every day)
+setInterval(() => {
+  const now = new Date();
+  if (now.getHours() === 18 && now.getMinutes() === 0) {
+    sendDailyReminders();
+  }
+}, 60000); // Check every minute
 
 // Sign up endpoint
 app.post('/auth/signup', async (req, res) => {
@@ -144,6 +426,9 @@ app.post('/auth/signup', async (req, res) => {
     // Generate token
     const token = generateToken(user.id);
 
+    // Send welcome email
+    await sendWelcomeEmail(email, name);
+
     res.json({ user, token });
   } catch (error) {
     console.error('Signup error details:', error);
@@ -174,16 +459,67 @@ app.post('/auth/signin', async (req, res) => {
     if (!validPassword) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
+    
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
-    await prisma.user.update({ where: { email }, data: { otp, otpExpiry } });
-    // Send OTP via email
-    await transporter.sendMail({
-      to: email,
-      subject: 'Your Social Mind Login OTP',
-      text: `Your OTP is: ${otp}`,
+    
+    console.log('Generating OTP for user:', email, 'OTP:', otp);
+    
+    await prisma.user.update({ 
+      where: { email }, 
+      data: { 
+        otp: otp as any, 
+        otpExpiry: otpExpiry as any 
+      } 
     });
+    
+    // Send OTP via email
+    try {
+      // Check if email credentials are configured
+      if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
+        console.error('Gmail credentials not configured for OTP email');
+        return res.status(500).json({ 
+          message: 'Email service not configured. Please contact support.',
+          error: 'GMAIL_USER and GMAIL_PASS not set in environment variables'
+        });
+      }
+      
+      console.log('Attempting to send OTP email to:', email);
+      
+      const result = await transporter.sendMail({
+        to: email,
+        subject: 'Your Social Mind Login OTP',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333;">🔐 Your Social Mind Login OTP</h2>
+            <p>Hi ${user.fullName},</p>
+            <p>Your OTP for logging into Social Mind is:</p>
+            <div style="background: #f5f5f5; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+              <h1 style="color: #667eea; font-size: 32px; margin: 0; letter-spacing: 8px;">${otp}</h1>
+            </div>
+            <p><strong>This OTP will expire in 5 minutes.</strong></p>
+            <p>If you didn't request this OTP, please ignore this email.</p>
+            <p>Best regards,<br>The Social Mind Team</p>
+          </div>
+        `,
+      });
+      
+      console.log('OTP email sent successfully to:', email, 'Message ID:', result.messageId);
+    } catch (emailError) {
+      console.error('Failed to send OTP email:', emailError);
+      console.error('Email error details:', {
+        message: emailError instanceof Error ? emailError.message : 'Unknown error',
+        stack: emailError instanceof Error ? emailError.stack : undefined,
+        email,
+        user: user.fullName
+      });
+      return res.status(500).json({ 
+        message: 'Failed to send OTP email. Please try again.',
+        error: emailError instanceof Error ? emailError.message : 'Unknown email error'
+      });
+    }
+    
     return res.json({ requireOtp: true });
   } catch (error) {
     console.error('Signin error:', error);
@@ -196,14 +532,28 @@ app.post('/auth/verify-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || user.otp !== otp || !user.otpExpiry || new Date() > user.otpExpiry) {
+    
+    // Use type assertion for OTP fields
+    const userWithOtp = user as any;
+    if (!userWithOtp || userWithOtp.otp !== otp || !userWithOtp.otpExpiry || new Date() > userWithOtp.otpExpiry) {
       return res.status(401).json({ message: 'Invalid or expired OTP' });
     }
+    
     // Clear OTP after use
-    await prisma.user.update({ where: { email }, data: { otp: null, otpExpiry: null } });
+    await prisma.user.update({ 
+      where: { email }, 
+      data: { 
+        otp: null as any, 
+        otpExpiry: null as any 
+      } 
+    });
+    
     // Generate token
-    const token = generateToken(user.id);
-    const { password: __, otp: ___, otpExpiry: ____, ...userWithoutSensitive } = user;
+    const token = generateToken(userWithOtp.id);
+    const { password: __, ...userWithoutSensitive } = userWithOtp;
+    
+    console.log('OTP verified successfully for user:', email);
+    
     return res.json({ token, user: userWithoutSensitive });
   } catch (error) {
     console.error('OTP verify error:', error);
@@ -221,6 +571,7 @@ app.post('/auth/google', async (req, res) => {
       where: { email },
     });
 
+    let isNewUser = false;
     if (!user) {
       user = await prisma.user.create({
         data: {
@@ -230,10 +581,16 @@ app.post('/auth/google', async (req, res) => {
           password: '', // Google users don't need a password
         },
       });
+      isNewUser = true;
     }
 
     // Generate token
     const token = generateToken(user.id);
+
+    // Send welcome email for new users
+    if (isNewUser) {
+      await sendWelcomeEmail(email, name);
+    }
 
     // Return user data without password
     const { password: _, ...userWithoutPassword } = user;
@@ -322,9 +679,15 @@ app.post('/posts', authenticateToken, async (req: AuthenticatedRequest, res: Res
   try {
     const userId = req.user?.id;
     const { content, imageUrl, platform, status, scheduledAt } = req.body;
+    
+    if (!userId) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+    
     if (!content || !platform || !scheduledAt) {
       return res.status(400).json({ message: 'content, platform, and scheduledAt are required' });
     }
+    
     const post = await prisma.post.create({
       data: {
         content,
@@ -335,7 +698,29 @@ app.post('/posts', authenticateToken, async (req: AuthenticatedRequest, res: Res
         userId,
       },
     });
+    
+    console.log('Post created successfully:', { postId: post.id, platform, scheduledAt });
+    
     res.status(201).json(post);
+
+    // Send calendar addition email with better error handling
+    try {
+      const userEmail = req.user?.email;
+      const userName = req.user?.fullName;
+      
+      if (!userEmail) {
+        console.error('No user email found for calendar addition email');
+        return;
+      }
+      
+      console.log('Attempting to send calendar addition email to:', userEmail);
+      
+      await sendCalendarAdditionEmail(userEmail, userName || 'User', content, scheduledAt, platform);
+      console.log('Calendar addition email sent successfully to:', userEmail);
+    } catch (emailError) {
+      console.error('Failed to send calendar addition email:', emailError);
+      // Don't fail the post creation if email fails
+    }
   } catch (error) {
     console.error('Create post error:', error);
     res.status(500).json({ message: 'Error creating post' });
@@ -841,7 +1226,8 @@ app.get('/auth/threads/callback', authenticateToken, async (req, res) => {
     res.json({ message: 'Threads account connected successfully' });
   } catch (error) {
     console.error('Threads OAuth error:', error);
-    res.status(500).json({ message: 'Threads OAuth failed', error: error?.response?.data || error.message });
+    const errorData = (error as any)?.response?.data || (error instanceof Error ? error.message : 'Unknown error');
+    res.status(500).json({ message: 'Threads OAuth failed', error: errorData });
   }
 });
 
@@ -970,9 +1356,9 @@ app.post('/ai/caption', upload.single('file'), async (req: Request, res: Respons
 app.post('/ai/content-plan', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = (req as any).user?.id;
-    const { contentType, description, platforms, planType } = req.body;
+    const { contentType, description, platforms, planType, startDate } = req.body;
 
-    if (!contentType || !description || !platforms || !planType) {
+    if (!contentType || !description || !platforms || !planType || !startDate) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
@@ -1126,11 +1512,29 @@ Generate ${numberOfDays} days of content ideas that will help this creator grow 
     } catch (error) {
       console.error('Failed to parse Gemini response:', error);
       // Fallback to generated plan
-      plan = generateFallbackPlan(numberOfDays, platforms, contentType);
+      plan = generateFallbackPlan(numberOfDays, platforms, contentType, startDate);
     }
+
+    // Update the plan with proper dates based on start date
+    const startDateObj = new Date(startDate);
+    const updatedPlan = plan.plan.map((dayPlan: any, index: number) => {
+      const currentDate = new Date(startDateObj);
+      currentDate.setDate(startDateObj.getDate() + index);
+      
+      return {
+        ...dayPlan,
+        date: currentDate.toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        }),
+        actualDate: currentDate.toISOString().split('T')[0] // YYYY-MM-DD format for backend use
+      };
+    });
     
     res.json({ 
-      plan: plan.plan || plan,
+      plan: updatedPlan,
       rawResponse: generatedText,
       message: 'Content plan generated successfully' 
     });
@@ -1144,14 +1548,33 @@ Generate ${numberOfDays} days of content ideas that will help this creator grow 
 });
 
 // Fallback plan generator
-function generateFallbackPlan(numberOfDays: number, platforms: string[], contentType: string): any {
+function generateFallbackPlan(numberOfDays: number, platforms: string[], contentType: string, startDate?: string): any {
   const plan = [];
   
   for (let day = 1; day <= numberOfDays; day++) {
+    let dateString = `Day ${day}`;
+    let actualDate = '';
+    
+    // If startDate is provided, calculate the actual date
+    if (startDate) {
+      const startDateObj = new Date(startDate);
+      const currentDate = new Date(startDateObj);
+      currentDate.setDate(startDateObj.getDate() + day - 1);
+      
+      dateString = currentDate.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      actualDate = currentDate.toISOString().split('T')[0];
+    }
+    
     const dayPlan = {
       day,
-      date: `Day ${day}`,
-      posts: []
+      date: dateString,
+      actualDate,
+      posts: [] as any[]
     };
     
     platforms.forEach(platform => {
@@ -1171,6 +1594,102 @@ function generateFallbackPlan(numberOfDays: number, platforms: string[], content
   
   return { plan };
 }
+
+// Test email endpoint (for debugging)
+app.post('/test-email', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userEmail = req.user?.email;
+    const userName = req.user?.fullName;
+    
+    if (!userEmail) {
+      return res.status(400).json({ message: 'No user email found' });
+    }
+    
+    console.log('Testing email functionality for:', userEmail);
+    
+    // Check if email credentials are configured
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
+      console.error('Gmail credentials not configured');
+      return res.status(500).json({ 
+        message: 'Email not configured', 
+        error: 'Please set GMAIL_USER and GMAIL_PASS in .env file' 
+      });
+    }
+    
+    // Send a test email
+    await sendCalendarAdditionEmail(
+      userEmail, 
+      userName || 'Test User', 
+      'Test content for July 31st', 
+      '2024-07-31T10:00:00.000Z', 
+      'Instagram'
+    );
+    
+    res.json({ message: 'Test email sent successfully' });
+  } catch (error) {
+    console.error('Test email error:', error);
+    res.status(500).json({ 
+      message: 'Failed to send test email', 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+});
+
+// Simple test email endpoint (no auth required)
+app.post('/test-email-simple', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+    
+    console.log('Testing simple email to:', email);
+    
+    // Check if email credentials are configured
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
+      console.error('Gmail credentials not configured');
+      return res.status(500).json({ 
+        message: 'Email not configured', 
+        error: 'Please set GMAIL_USER and GMAIL_PASS in .env file',
+        envCheck: {
+          GMAIL_USER: process.env.GMAIL_USER ? 'Set' : 'Not set',
+          GMAIL_PASS: process.env.GMAIL_PASS ? 'Set' : 'Not set'
+        }
+      });
+    }
+    
+    // Send a simple test email
+    const result = await transporter.sendMail({
+      to: email,
+      subject: 'Test Email from Social Mind',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">🧪 Test Email</h2>
+          <p>This is a test email from Social Mind to verify email functionality.</p>
+          <p>If you received this email, your email configuration is working correctly!</p>
+          <p>Timestamp: ${new Date().toISOString()}</p>
+          <p>Best regards,<br>The Social Mind Team</p>
+        </div>
+      `,
+    });
+    
+    console.log('Simple test email sent successfully:', { messageId: result.messageId, to: email });
+    
+    res.json({ 
+      message: 'Test email sent successfully',
+      messageId: result.messageId,
+      to: email
+    });
+  } catch (error) {
+    console.error('Simple test email error:', error);
+    res.status(500).json({ 
+      message: 'Failed to send test email', 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: error instanceof Error ? error.stack : undefined
+    });
+  }
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
