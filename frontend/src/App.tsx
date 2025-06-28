@@ -16,35 +16,76 @@ import Accounts from "./pages/Accounts";
 import SocialAccounts from "./pages/SocialAccounts";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <UserProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Homepage />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/dashboard" element={<Layout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="schedule-setup" element={<ScheduleSetup />} />
-              <Route path="content" element={<ContentStudio />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="calendar" element={<Calendar />} />
-              <Route path="accounts" element={<Accounts />} />
-              <Route path="social-accounts" element={<SocialAccounts />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </UserProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  // Focus management for accessibility
+  useEffect(() => {
+    // Announce page changes to screen readers
+    const announcePageChange = () => {
+      const mainContent = document.querySelector('main');
+      if (mainContent) {
+        mainContent.setAttribute('aria-live', 'polite');
+        mainContent.setAttribute('aria-atomic', 'true');
+      }
+    };
+
+    announcePageChange();
+
+    // Handle focus restoration on navigation
+    const handleFocusRestoration = () => {
+      const mainContent = document.querySelector('main');
+      if (mainContent && mainContent instanceof HTMLElement) {
+        // Small delay to ensure content is rendered
+        setTimeout(() => {
+          mainContent.focus();
+        }, 100);
+      }
+    };
+
+    // Listen for route changes
+    window.addEventListener('popstate', handleFocusRestoration);
+    
+    return () => {
+      window.removeEventListener('popstate', handleFocusRestoration);
+    };
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <UserProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <div 
+              className="min-h-screen"
+              role="application"
+              aria-label="SocialMind - Social Media Management Platform"
+            >
+              <Routes>
+                <Route path="/" element={<Homepage />} />
+                <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/dashboard" element={<Layout />}>
+                  <Route index element={<Dashboard />} />
+                  <Route path="schedule-setup" element={<ScheduleSetup />} />
+                  <Route path="content" element={<ContentStudio />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="calendar" element={<Calendar />} />
+                  <Route path="accounts" element={<Accounts />} />
+                  <Route path="social-accounts" element={<SocialAccounts />} />
+                  <Route path="settings" element={<Settings />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+          </BrowserRouter>
+        </TooltipProvider>
+      </UserProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
