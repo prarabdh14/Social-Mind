@@ -5,7 +5,6 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { postService, dashboardService } from "../services/api";
 import { Post, DashboardAnalytics, DashboardInsights, SocialMediaAccount } from "../types";
-import PostComposer from "../components/dashboard/PostComposer";
 import { useUser } from "../contexts/UserContext";
 import { 
   TrendingUp, 
@@ -31,8 +30,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingPost, setEditingPost] = useState<Post | null>(null);
 
   const fetchDashboardData = async () => {
     setAnalyticsLoading(true);
@@ -110,29 +107,7 @@ export default function Dashboard() {
   };
 
   const handleCreate = () => {
-    setEditingPost(null);
-    setModalOpen(true);
-  };
-
-  const handleModalClose = () => {
-    setModalOpen(false);
-    setEditingPost(null);
-  };
-
-  const handleModalSubmit = async (data: any) => {
-    try {
-      if (editingPost) {
-        await postService.updatePost(editingPost.id, data);
-      } else {
-        await postService.createPost(data);
-      }
-      setModalOpen(false);
-      setEditingPost(null);
-      fetchPosts();
-      fetchDashboardData(); // Refresh analytics after creating/updating post
-    } catch (err) {
-      setError('Failed to save post');
-    }
+    navigate('/dashboard/content');
   };
 
   const recentPosts = posts.slice(0, 3).map(post => ({
@@ -380,15 +355,6 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* Post Composer Modal */}
-      {modalOpen && (
-        <PostComposer
-          onClose={handleModalClose}
-          post={editingPost}
-          onSubmit={handleModalSubmit}
-        />
       )}
     </div>
   );
