@@ -34,6 +34,7 @@ import {
   ChevronRight,
   PenTool
 } from "lucide-react";
+import LoginModal from "../components/shared/LoginModal";
 
 export default function Homepage() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
@@ -43,6 +44,8 @@ export default function Homepage() {
     engagement: 0,
     users: 0
   });
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginMode, setLoginMode] = useState<'login' | 'register'>('login');
 
   const testimonials = [
     {
@@ -147,6 +150,23 @@ export default function Homepage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-cyan-50">
+      {/* Auth Buttons - top right */}
+      <div className="fixed top-6 right-6 z-40 flex items-center space-x-4">
+        <Button
+          variant="outline"
+          className="border-blue-600 text-blue-600 bg-white hover:bg-blue-50 font-semibold px-6 py-2"
+          onClick={() => { setLoginMode('login'); setShowLoginModal(true); }}
+        >
+          Login
+        </Button>
+        <Button
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2"
+          onClick={() => { setLoginMode('register'); setShowLoginModal(true); }}
+        >
+          Sign Up
+        </Button>
+      </div>
+
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white">
         <div className="absolute inset-0 bg-black/20"></div>
@@ -191,6 +211,14 @@ export default function Homepage() {
           </div>
         </div>
       </section>
+
+      {/* Login/Signup Modal */}
+      {showLoginModal && (
+        <LoginModal
+          onClose={() => setShowLoginModal(false)}
+          initialMode={loginMode}
+        />
+      )}
 
       {/* Social Proof Bar */}
       <section className="bg-white py-8 shadow-sm">
