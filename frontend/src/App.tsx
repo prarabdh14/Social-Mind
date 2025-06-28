@@ -17,9 +17,9 @@ import SocialAccounts from "./pages/SocialAccounts";
 import Settings from "./pages/Settings";
 import ContentPlanning from "./pages/ContentPlanning";
 import NotFound from "./pages/NotFound";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <UserProvider>

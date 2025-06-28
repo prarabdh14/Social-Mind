@@ -45,10 +45,18 @@ export function Sidebar() {
   };
 
   return (
-    <SidebarComponent className={`${collapsed ? "w-16" : "w-64"} border-r bg-white`}>
+    <SidebarComponent 
+      className={`${collapsed ? "w-16" : "w-64"} border-r bg-white`}
+      role="navigation"
+      aria-label="Main navigation"
+    >
       <div className="p-6 border-b">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+          <div 
+            className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center"
+            role="img"
+            aria-label="Social Mind logo"
+          >
             <Zap className="h-5 w-5 text-white" />
           </div>
           {!collapsed && (
@@ -64,21 +72,25 @@ export function Sidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {navigation.map((item) => (
+            <SidebarMenu role="menubar" aria-label="Main navigation menu">
+              {navigation.map((item, index) => (
                 <SidebarMenuItem key={item.name}>
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.href}
                       className={({ isActive: navIsActive }) =>
-                        `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                        `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                           navIsActive || isActive(item.href)
                             ? "bg-blue-50 text-blue-700 font-medium"
                             : "text-gray-700 hover:bg-gray-50"
                         }`
                       }
+                      role="menuitem"
+                      aria-label={`Navigate to ${item.name}`}
+                      aria-current={isActive(item.href) ? "page" : undefined}
+                      tabIndex={0}
                     >
-                      <item.icon className="h-5 w-5" />
+                      <item.icon className="h-5 w-5" aria-hidden="true" />
                       {!collapsed && <span>{item.name}</span>}
                     </NavLink>
                   </SidebarMenuButton>
