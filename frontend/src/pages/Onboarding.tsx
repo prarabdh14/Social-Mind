@@ -53,7 +53,7 @@ export default function Onboarding() {
   const progress = (currentStep / 3) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-cyan-50 p-6">
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white p-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">

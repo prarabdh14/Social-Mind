@@ -21,6 +21,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "../components/ui/sidebar";
+import logo from '../assets/logo.png';
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -53,11 +54,11 @@ export function Sidebar() {
       <div className="p-6 border-b">
         <div className="flex items-center gap-2">
           <div 
-            className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center"
+            className="w-8 h-8 rounded-lg flex items-center justify-center"
             role="img"
             aria-label="Social Mind logo"
           >
-            <Zap className="h-5 w-5 text-white" />
+            <img src={logo} alt="Social Mind logo" className="w-7 h-7 rounded" />
           </div>
           {!collapsed && (
             <div>

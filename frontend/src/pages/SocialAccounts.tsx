@@ -344,7 +344,7 @@ export default function SocialAccounts() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Social Accounts</h1>

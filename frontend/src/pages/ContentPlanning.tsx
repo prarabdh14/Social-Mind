@@ -5,7 +5,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
-import { Calendar, Clock, TrendingUp, Users, Check, Plus } from 'lucide-react';
+import { Calendar, Clock, TrendingUp, Users, Check, Plus, Instagram, Twitter, Facebook, Linkedin, Youtube, MessageCircle } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 import { POSTING_TIMES, getPlatformTimes } from '../utils/postingTimes';
 
@@ -58,13 +58,12 @@ const ContentPlanning: React.FC = () => {
   ];
 
   const platforms = [
-    { id: 'instagram', name: 'Instagram', icon: '📸' },
-    { id: 'youtube', name: 'YouTube', icon: '📺' },
-    { id: 'twitter', name: 'Twitter', icon: '🐦' },
-    { id: 'facebook', name: 'Facebook', icon: '📘' },
-    { id: 'linkedin', name: 'LinkedIn', icon: '💼' },
-    { id: 'tiktok', name: 'TikTok', icon: '🎵' },
-    { id: 'threads', name: 'Threads', icon: '🧵' }
+    { id: 'instagram', name: 'Instagram', icon: <Instagram className="inline h-5 w-5 mr-1 text-pink-500" /> },
+    { id: 'youtube', name: 'YouTube', icon: <Youtube className="inline h-5 w-5 mr-1 text-red-500" /> },
+    { id: 'twitter', name: 'Twitter', icon: <Twitter className="inline h-5 w-5 mr-1 text-blue-400" /> },
+    { id: 'facebook', name: 'Facebook', icon: <Facebook className="inline h-5 w-5 mr-1 text-blue-600" /> },
+    { id: 'linkedin', name: 'LinkedIn', icon: <Linkedin className="inline h-5 w-5 mr-1 text-blue-700" /> },
+    { id: 'threads', name: 'Threads', icon: <MessageCircle className="inline h-5 w-5 mr-1 text-gray-700" /> }
   ];
 
   const planDurationOptions = [
@@ -185,14 +184,24 @@ const ContentPlanning: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Content Planning</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Content Planning</h1>
+          <p className="text-gray-600 dark:text-gray-300">
             Get AI-powered content ideas and posting schedules tailored to your niche
           </p>
         </div>
+      </div>
+
+      {/* Platform selection with icons */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        {platforms.map((platform) => (
+          <span key={platform.id} className="flex items-center px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm">
+            {platform.icon}
+            {platform.name}
+          </span>
+        ))}
       </div>
 
       {/* Optimal Posting Times Info */}

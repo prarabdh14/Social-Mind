@@ -71,6 +71,7 @@ export interface DashboardAnalytics {
     publishedAt?: string;
     createdAt: string;
   }>;
+  reachHistory?: Array<{ date: string; value: number }>;
 }
 
 export interface DashboardInsights {
