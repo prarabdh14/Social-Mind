@@ -95,4 +95,70 @@ export const postService = {
   },
 };
 
+// Dashboard service for analytics and insights
+export const dashboardService = {
+  async getAnalytics() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token');
+    }
+
+    const response = await fetch(`${API_URL}/dashboard/analytics`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch analytics');
+    }
+
+    return response.json();
+  },
+
+  async getAccounts() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token');
+    }
+
+    const response = await fetch(`${API_URL}/dashboard/accounts`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch accounts');
+    }
+
+    return response.json();
+  },
+
+  async getInsights() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token');
+    }
+
+    const response = await fetch(`${API_URL}/dashboard/insights`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch insights');
+    }
+
+    return response.json();
+  },
+};
+
 export default api; 
