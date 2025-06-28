@@ -1,8 +1,10 @@
- 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
+import { postService } from "../services/api";
+import { Post } from "../types";
+import PostComposer from "../components/dashboard/PostComposer";
 import { 
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -20,52 +22,35 @@ import {
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedView, setSelectedView] = useState("month");
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
 
   const platforms = {
-    instagram: { icon: Instagram, color: "bg-pink-500", name: "Instagram" },
-    twitter: { icon: Twitter, color: "bg-blue-400", name: "Twitter" },
-    facebook: { icon: Facebook, color: "bg-blue-600", name: "Facebook" },
-    linkedin: { icon: Linkedin, color: "bg-blue-700", name: "LinkedIn" }
+    Instagram: { icon: Instagram, color: "bg-pink-500", name: "Instagram" },
+    Twitter: { icon: Twitter, color: "bg-blue-400", name: "Twitter" },
+    Facebook: { icon: Facebook, color: "bg-blue-600", name: "Facebook" },
+    YouTube: { icon: Linkedin, color: "bg-red-500", name: "YouTube" }
   };
 
-  const scheduledPosts = [
-    {
-      id: 1,
-      title: "Product Launch Announcement",
-      platform: "instagram",
-      time: "2:00 PM",
-      date: new Date(2024, 5, 15),
-      status: "scheduled",
-      engagement: "High"
-    },
-    {
-      id: 2,
-      title: "Industry News Update",
-      platform: "twitter",
-      time: "10:00 AM",
-      date: new Date(2024, 5, 16),
-      status: "scheduled",
-      engagement: "Medium"
-    },
-    {
-      id: 3,
-      title: "Behind the Scenes Content",
-      platform: "facebook",
-      time: "4:00 PM",
-      date: new Date(2024, 5, 17),
-      status: "draft",
-      engagement: "Medium"
-    },
-    {
-      id: 4,
-      title: "Professional Tips Article",
-      platform: "linkedin",
-      time: "9:00 AM",
-      date: new Date(2024, 5, 18),
-      status: "scheduled",
-      engagement: "High"
+  const fetchPosts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await postService.getPosts();
+      setPosts(data);
+    } catch (err) {
+      setError('Failed to fetch posts');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -92,10 +77,12 @@ export default function Calendar() {
 
   const getPostsForDate = (date: Date) => {
     if (!date) return [];
-    return scheduledPosts.filter(post => 
-      post.date.getDate() === date.getDate() &&
-      post.date.getMonth() === date.getMonth()
-    );
+    return posts.filter(post => {
+      const postDate = new Date(post.scheduledAt);
+      return postDate.getDate() === date.getDate() &&
+             postDate.getMonth() === date.getMonth() &&
+             postDate.getFullYear() === date.getFullYear();
+    });
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -106,6 +93,36 @@ export default function Calendar() {
       newDate.setMonth(newDate.getMonth() + 1);
     }
     setCurrentDate(newDate);
+  };
+
+  const handleCreate = () => {
+    setEditingPost(null);
+    setModalOpen(true);
+  };
+
+  const handleEdit = (post: Post) => {
+    setEditingPost(post);
+    setModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setModalOpen(false);
+    setEditingPost(null);
+  };
+
+  const handleModalSubmit = async (data: any) => {
+    try {
+      if (editingPost) {
+        await postService.updatePost(editingPost.id, data);
+      } else {
+        await postService.createPost(data);
+      }
+      setModalOpen(false);
+      setEditingPost(null);
+      fetchPosts();
+    } catch (err) {
+      setError('Failed to save post');
+    }
   };
 
   const monthNames = [
@@ -127,12 +144,14 @@ export default function Calendar() {
             <Filter className="h-4 w-4 mr-2" />
             Filter
           </Button>
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleCreate}>
             <Plus className="h-4 w-4 mr-2" />
             Schedule Post
           </Button>
         </div>
       </div>
+
+      {error && <div className="text-red-500">{error}</div>}
 
       {/* Calendar Controls */}
       <div className="flex justify-between items-center">
@@ -170,80 +189,78 @@ export default function Calendar() {
         <div className="lg:col-span-3">
           <Card>
             <CardContent className="p-6">
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
-                {/* Week day headers */}
-                {weekDays.map(day => (
-                  <div key={day} className="bg-gray-50 p-3 text-center text-sm font-medium text-gray-600">
-                    {day}
+              {loading ? (
+                <div className="text-center py-8">Loading posts...</div>
+              ) : (
+                <>
+                  {/* Calendar Grid */}
+                  <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
+                    {/* Week day headers */}
+                    {weekDays.map(day => (
+                      <div key={day} className="bg-gray-50 p-3 text-center text-sm font-medium text-gray-600">
+                        {day}
+                      </div>
+                    ))}
+                    
+                    {/* Calendar days */}
+                    {getDaysInMonth(currentDate).map((date, index) => (
+                      <div 
+                        key={index} 
+                        className={`bg-white p-2 min-h-[120px] ${!date ? 'bg-gray-50' : ''} hover:bg-gray-50 transition-colors`}
+                      >
+                        {date && (
+                          <>
+                            <div className="text-sm font-medium text-gray-900 mb-2">
+                              {date.getDate()}
+                            </div>
+                            <div className="space-y-1">
+                              {getPostsForDate(date).map(post => {
+                                const platformConfig = platforms[post.platform as keyof typeof platforms];
+                                const PlatformIcon = platformConfig?.icon;
+                                return (
+                                  <div 
+                                    key={post.id}
+                                    className={`text-xs p-1 rounded text-white cursor-pointer hover:opacity-80 ${platformConfig?.color || 'bg-gray-500'}`}
+                                    onClick={() => handleEdit(post)}
+                                  >
+                                    <div className="flex items-center gap-1">
+                                      {PlatformIcon && <PlatformIcon className="h-3 w-3" />}
+                                      <span className="truncate">{post.content.substring(0, 20)}...</span>
+                                    </div>
+                                    <div className="text-xs opacity-90">{post.status}</div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-                
-                {/* Calendar days */}
-                {getDaysInMonth(currentDate).map((date, index) => (
-                  <div 
-                    key={index} 
-                    className={`bg-white p-2 min-h-[120px] ${!date ? 'bg-gray-50' : ''} hover:bg-gray-50 transition-colors`}
-                  >
-                    {date && (
-                      <>
-                        <div className="text-sm font-medium text-gray-900 mb-2">
-                          {date.getDate()}
-                        </div>
-                        <div className="space-y-1">
-                          {getPostsForDate(date).map(post => {
-                            const PlatformIcon = platforms[post.platform as keyof typeof platforms].icon;
-                            return (
-                              <div 
-                                key={post.id}
-                                className={`text-xs p-1 rounded text-white cursor-pointer hover:opacity-80 ${platforms[post.platform as keyof typeof platforms].color}`}
-                              >
-                                <div className="flex items-center gap-1">
-                                  <PlatformIcon className="h-3 w-3" />
-                                  <span className="truncate">{post.title}</span>
-                                </div>
-                                <div className="text-xs opacity-80">{post.time}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Upcoming Posts */}
+        <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Upcoming Posts</CardTitle>
+              <CardTitle className="text-lg">Platform Overview</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {scheduledPosts.slice(0, 4).map(post => {
-                  const PlatformIcon = platforms[post.platform as keyof typeof platforms].icon;
+                {Object.entries(platforms).map(([platform, config]) => {
+                  const Icon = config.icon;
+                  const count = posts.filter(p => p.platform === platform).length;
                   return (
-                    <div key={post.id} className="p-3 border rounded-lg hover:bg-gray-50">
-                      <div className="flex items-start gap-2">
-                        <PlatformIcon className={`h-4 w-4 mt-1 ${platforms[post.platform as keyof typeof platforms].color.replace('bg-', 'text-')}`} />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium truncate">{post.title}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant={post.status === 'scheduled' ? 'default' : 'secondary'} className="text-xs">
-                              {post.status}
-                            </Badge>
-                            <span className="text-xs text-gray-500 flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {post.time}
-                            </span>
-                          </div>
-                        </div>
+                    <div key={platform} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Icon className={`h-4 w-4 ${config.color}`} />
+                        <span className="text-sm">{config.name}</span>
                       </div>
+                      <Badge variant="secondary">{count}</Badge>
                     </div>
                   );
                 })}
@@ -251,74 +268,34 @@ export default function Calendar() {
             </CardContent>
           </Card>
 
-          {/* Platform Legend */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Platforms</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {Object.entries(platforms).map(([key, platform]) => {
-                  const Icon = platform.icon;
-                  return (
-                    <div key={key} className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded ${platform.color}`}></div>
-                      <Icon className={`h-4 w-4 ${platform.color.replace('bg-', 'text-')}`} />
-                      <span className="text-sm">{platform.name}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">This Month</CardTitle>
+              <CardTitle className="text-lg">Status Overview</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Scheduled Posts</span>
-                  <span className="font-medium">24</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Published</span>
-                  <span className="font-medium">18</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Drafts</span>
-                  <span className="font-medium">6</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Avg. Engagement</span>
-                  <span className="font-medium text-green-600">+12.5%</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* AI Recommendations */}
-          <Card className="border-blue-200 bg-blue-50">
-            <CardHeader>
-              <CardTitle className="text-lg text-blue-800">AI Recommendations</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 text-sm">
-                <div className="p-2 bg-white rounded border border-blue-100">
-                  <p className="font-medium text-blue-900">Optimal Time</p>
-                  <p className="text-blue-700 text-xs">Post at 2:30 PM for 40% more engagement</p>
-                </div>
-                <div className="p-2 bg-white rounded border border-blue-100">
-                  <p className="font-medium text-blue-900">Content Gap</p>
-                  <p className="text-blue-700 text-xs">Consider adding more Instagram Stories</p>
-                </div>
+                {['SCHEDULED', 'DRAFT', 'POSTED', 'FAILED'].map(status => {
+                  const count = posts.filter(p => p.status === status).length;
+                  return (
+                    <div key={status} className="flex items-center justify-between">
+                      <span className="text-sm capitalize">{status.toLowerCase()}</span>
+                      <Badge variant="secondary">{count}</Badge>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {modalOpen && (
+        <PostComposer
+          onClose={handleModalClose}
+          post={editingPost}
+          onSubmit={handleModalSubmit}
+        />
+      )}
     </div>
   );
 }

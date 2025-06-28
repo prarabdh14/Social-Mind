@@ -1,4 +1,3 @@
- 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -8,6 +7,7 @@ import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Switch } from "../components/ui/switch";
 import { Label } from "../components/ui/label";
+import { API_URL } from "../config";
 import { 
   Wand2, 
   Instagram, 
@@ -20,7 +20,8 @@ import {
   Sparkles,
   TrendingUp,
   BookmarkPlus,
-  RefreshCw
+  RefreshCw,
+  Upload
 } from "lucide-react";
 
 export default function ContentStudio() {
@@ -29,6 +30,8 @@ export default function ContentStudio() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [contentIdea, setContentIdea] = useState("");
   const [selectedTone, setSelectedTone] = useState("professional");
+  const [file, setFile] = useState<File | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const platforms = [
     { id: "instagram", name: "Instagram", icon: Instagram, color: "text-pink-600" },
@@ -66,24 +69,40 @@ export default function ContentStudio() {
     "Share a success story from a customer who increased engagement by 300%"
   ];
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+      setAiError(null);
+    }
+  };
+
   const handleGenerateContent = async () => {
+    if (!file) {
+      setAiError('Please upload a photo or video first');
+      return;
+    }
+
     setIsGenerating(true);
-    setTimeout(() => {
-      const sampleContent = `🚀 Exciting news! Our AI-powered social media management platform is revolutionizing how businesses connect with their audience.
-
-✨ Key features:
-• Intelligent content generation
-• Optimal posting schedules  
-• Real-time analytics
-• Multi-platform management
-
-Ready to transform your social media strategy? Let's chat! 💬
-
-#AI #SocialMedia #Innovation #DigitalMarketing`;
+    setAiError(null);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
       
-      setGeneratedContent(sampleContent);
+      const res = await fetch(`${API_URL}/ai/caption`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!res.ok) throw new Error('Failed to generate caption');
+      
+      const data = await res.json();
+      setGeneratedContent(data.caption);
+    } catch (err) {
+      setAiError('Failed to generate caption. Please try again.');
+    } finally {
       setIsGenerating(false);
-    }, 2000);
+    }
   };
 
   return (
@@ -107,6 +126,40 @@ Ready to transform your social media strategy? Let's chat! 💬
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* File Upload */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Upload Photo/Video for AI Captioning
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label htmlFor="file-upload" className="cursor-pointer">
+                    <span className="text-blue-600 hover:text-blue-700 font-medium">
+                      Click to upload
+                    </span>
+                    <span className="text-gray-500"> or drag and drop</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">PNG, JPG, MP4 up to 10MB</p>
+                </div>
+                {file && (
+                  <div className="mt-2 text-sm text-gray-600">
+                    Selected: {file.name}
+                  </div>
+                )}
+                {aiError && (
+                  <div className="mt-2 text-sm text-red-600">
+                    {aiError}
+                  </div>
+                )}
+              </div>
+
               {/* Platform Selection */}
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
@@ -134,7 +187,7 @@ Ready to transform your social media strategy? Let's chat! 💬
               {/* Content Input */}
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Describe your content idea
+                  Content Idea (Optional)
                 </label>
                 <Textarea
                   placeholder="e.g., Announce our new AI feature that helps users save 3 hours per week on content creation..."
@@ -165,18 +218,18 @@ Ready to transform your social media strategy? Let's chat! 💬
 
               <Button 
                 onClick={handleGenerateContent}
-                disabled={isGenerating}
+                disabled={isGenerating || !file}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 {isGenerating ? (
                   <>
                     <Sparkles className="h-4 w-4 mr-2 animate-spin" />
-                    Generating Content...
+                    Generating AI Caption...
                   </>
                 ) : (
                   <>
                     <Wand2 className="h-4 w-4 mr-2" />
-                    Generate AI Content
+                    Generate AI Caption
                   </>
                 )}
               </Button>
@@ -203,47 +256,18 @@ Ready to transform your social media strategy? Let's chat! 💬
                     <Copy className="h-4 w-4 mr-2" />
                     Copy
                   </Button>
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Schedule Post
-                  </Button>
                   <Button variant="outline" size="sm">
                     <BookmarkPlus className="h-4 w-4 mr-2" />
-                    Save to Library
+                    Save Draft
+                  </Button>
+                  <Button className="bg-green-600 hover:bg-green-700">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Schedule Post
                   </Button>
                 </div>
               </CardContent>
             </Card>
           )}
-
-          {/* Content Ideas Generator */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-green-600" />
-                AI Content Ideas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {generatedIdeas.map((idea, index) => (
-                  <div key={index} className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-                    <p className="text-sm">{idea}</p>
-                    <div className="flex gap-2 mt-2">
-                      <Button size="sm" variant="outline">Use This Idea</Button>
-                      <Button size="sm" variant="ghost">
-                        <BookmarkPlus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <Button variant="outline" className="w-full mt-4">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Generate More Ideas
-              </Button>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Sidebar */}
@@ -256,10 +280,7 @@ Ready to transform your social media strategy? Let's chat! 💬
             <CardContent>
               <div className="space-y-3">
                 {contentTemplates.map((template) => (
-                  <div
-                    key={template.id}
-                    className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                  >
+                  <div key={template.id} className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="font-medium text-sm">{template.name}</p>
@@ -275,48 +296,34 @@ Ready to transform your social media strategy? Let's chat! 💬
             </CardContent>
           </Card>
 
-          {/* Trending Hashtags */}
+          {/* Trending Topics */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Hash className="h-4 w-4" />
-                Trending Hashtags
-              </CardTitle>
+              <CardTitle className="text-lg">Trending Topics</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {trendingTopics.map((hashtag) => (
-                  <Badge
-                    key={hashtag}
-                    variant="outline"
-                    className="cursor-pointer hover:bg-blue-50 hover:border-blue-300"
-                  >
-                    {hashtag}
+                {trendingTopics.map((topic) => (
+                  <Badge key={topic} variant="outline" className="cursor-pointer hover:bg-gray-100">
+                    {topic}
                   </Badge>
                 ))}
               </div>
             </CardContent>
           </Card>
 
-          {/* AI Insights */}
-          <Card className="border-blue-200 bg-blue-50">
+          {/* AI Suggestions */}
+          <Card>
             <CardHeader>
-              <CardTitle className="text-lg text-blue-800">AI Insights</CardTitle>
+              <CardTitle className="text-lg">AI Content Ideas</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3 text-sm">
-                <div className="p-2 bg-white rounded border border-blue-100">
-                  <p className="font-medium text-blue-900">Best Time to Post</p>
-                  <p className="text-blue-700 text-xs">Today: 2:30 PM - 4:00 PM</p>
-                </div>
-                <div className="p-2 bg-white rounded border border-blue-100">
-                  <p className="font-medium text-blue-900">Engagement Tip</p>
-                  <p className="text-blue-700 text-xs">Add emojis for 15% more engagement</p>
-                </div>
-                <div className="p-2 bg-white rounded border border-blue-100">
-                  <p className="font-medium text-blue-900">Trending Topic</p>
-                  <p className="text-blue-700 text-xs">#AI is trending in your niche</p>
-                </div>
+              <div className="space-y-3">
+                {generatedIdeas.map((idea, index) => (
+                  <div key={index} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm text-blue-900">{idea}</p>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
