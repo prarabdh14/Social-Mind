@@ -1,25 +1,28 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Badge } from "../components/ui/badge";
-import { postService } from "../services/api";
-import { Post } from "../types";
-import PostComposer from "../components/dashboard/PostComposer";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { postService } from '../services/api';
+import { Post } from '../types';
+import { useUser } from '../contexts/UserContext';
 import { 
-  Calendar as CalendarIcon,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  Filter,
-  Instagram,
-  Twitter,
+  Calendar as CalendarIcon, 
+  Clock, 
+  MessageCircle, 
+  Instagram, 
+  Twitter, 
   Facebook,
   Linkedin,
-  Clock,
-  Users,
+  Youtube,
+  Plus,
+  Edit,
+  Trash2,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
   CalendarDays
-} from "lucide-react";
+} from 'lucide-react';
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -27,8 +30,6 @@ export default function Calendar() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const platforms = {
@@ -36,7 +37,7 @@ export default function Calendar() {
     Twitter: { icon: Twitter, color: "bg-blue-400", name: "Twitter" },
     Facebook: { icon: Facebook, color: "bg-blue-600", name: "Facebook" },
     LinkedIn: { icon: Linkedin, color: "bg-blue-700", name: "LinkedIn" },
-    YouTube: { icon: Linkedin, color: "bg-red-500", name: "YouTube" }
+    YouTube: { icon: Youtube, color: "bg-red-500", name: "YouTube" }
   };
 
   const fetchPosts = async () => {
@@ -113,43 +114,6 @@ export default function Calendar() {
            date.getFullYear() === selectedDate.getFullYear();
   };
 
-  const handleCreate = () => {
-    setEditingPost(null);
-    setModalOpen(true);
-  };
-
-  const handleEdit = (post: Post) => {
-    setEditingPost(post);
-    setModalOpen(true);
-  };
-
-  const handleModalClose = () => {
-    setModalOpen(false);
-    setEditingPost(null);
-  };
-
-  const handleModalSubmit = async (data: any) => {
-    try {
-      if (editingPost) {
-        await postService.updatePost(editingPost.id, data);
-      } else {
-        await postService.createPost(data);
-      }
-      setModalOpen(false);
-      setEditingPost(null);
-      fetchPosts();
-    } catch (err) {
-      setError('Failed to save post');
-    }
-  };
-
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
-
-  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'POSTED': return 'bg-green-100 text-green-800';
@@ -194,7 +158,7 @@ export default function Calendar() {
             <Filter className="h-4 w-4 mr-2" />
             Filter
           </Button>
-          <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleCreate}>
+          <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {}}>
             <Plus className="h-4 w-4 mr-2" />
             Schedule Post
           </Button>
@@ -210,7 +174,7 @@ export default function Calendar() {
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <h2 className="text-xl font-semibold">
-            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+            {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </h2>
           <Button variant="outline" onClick={() => navigateMonth('next')}>
             <ChevronRight className="h-4 w-4" />
@@ -249,7 +213,7 @@ export default function Calendar() {
               {/* Calendar Grid */}
               <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
                 {/* Week day headers */}
-                {weekDays.map(day => (
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
                   <div key={day} className="bg-gray-50 p-3 text-center text-sm font-medium text-gray-600">
                     {day}
                   </div>
@@ -281,7 +245,6 @@ export default function Calendar() {
                                 className={`text-xs p-1 rounded text-white cursor-pointer hover:opacity-80 ${platformConfig?.color || 'bg-gray-500'}`}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleEdit(post);
                                 }}
                               >
                                 <div className="flex items-center gap-1">
@@ -378,7 +341,6 @@ export default function Calendar() {
                         <div 
                           key={post.id}
                           className="p-2 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                          onClick={() => handleEdit(post)}
                         >
                           <div className="flex items-center gap-2 mb-1">
                             {PlatformIcon && <PlatformIcon className="h-4 w-4" />}
@@ -401,14 +363,6 @@ export default function Calendar() {
           )}
         </div>
       </div>
-
-      {modalOpen && (
-        <PostComposer
-          onClose={handleModalClose}
-          post={editingPost}
-          onSubmit={handleModalSubmit}
-        />
-      )}
     </div>
   );
 }

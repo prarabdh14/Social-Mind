@@ -7,7 +7,8 @@ import {
   Settings,
   Users,
   Zap,
-  Link
+  Link,
+  TrendingUp
 } from "lucide-react";
 import {
   Sidebar as SidebarComponent,
@@ -23,6 +24,7 @@ import {
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Content Planning", href: "/dashboard/planning", icon: TrendingUp },
   { name: "Content Studio", href: "/dashboard/content", icon: PenTool },
   { name: "Calendar", href: "/dashboard/calendar", icon: Calendar },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },

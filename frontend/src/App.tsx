@@ -15,6 +15,7 @@ import Calendar from "./pages/Calendar";
 import Accounts from "./pages/Accounts";
 import SocialAccounts from "./pages/SocialAccounts";
 import Settings from "./pages/Settings";
+import ContentPlanning from "./pages/ContentPlanning";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/dashboard" element={<Layout />}>
               <Route index element={<Dashboard />} />
+              <Route path="planning" element={<ContentPlanning />} />
               <Route path="schedule-setup" element={<ScheduleSetup />} />
               <Route path="content" element={<ContentStudio />} />
               <Route path="analytics" element={<Analytics />} />

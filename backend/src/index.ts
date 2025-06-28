@@ -941,6 +941,212 @@ app.post('/ai/caption', upload.single('file'), async (req: Request, res: Respons
   }
 });
 
+// AI Content Planning endpoint
+app.post('/ai/content-plan', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    const { contentType, description, platforms, planType } = req.body;
+
+    if (!contentType || !description || !platforms || !planType) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    if (!userId) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ message: 'Gemini API key not configured' });
+    }
+
+    // Convert plan type to number of days
+    const getDaysFromPlanType = (planType: string): number => {
+      switch (planType) {
+        case '2days': return 2;
+        case '3days': return 3;
+        case '5days': return 5;
+        case '1week': return 7;
+        case '2weeks': return 14;
+        case '3weeks': return 21;
+        default: return 7;
+      }
+    };
+
+    const numberOfDays = getDaysFromPlanType(planType);
+
+    // Create a comprehensive prompt for content ideas
+    const prompt = `You are an expert social media content strategist creating a detailed ${numberOfDays}-day content plan for a creator.
+
+CREATOR PROFILE:
+- Content Type: ${contentType}
+- Description: ${description}
+- Platforms: ${platforms.join(', ')}
+- Duration: ${numberOfDays} days
+
+TASK: Create a detailed day-by-day content plan with specific content ideas for each platform.
+
+REQUIREMENTS:
+1. Generate ${numberOfDays} days of content ideas
+2. For each day, provide content ideas for each selected platform
+3. Focus on content ideas, not scheduling (timing is handled separately)
+4. Make content ideas specific, actionable, and tailored to the creator's niche
+5. Ensure content variety and engagement potential
+
+PLATFORM-SPECIFIC GUIDELINES:
+
+INSTAGRAM:
+- Content Types: Visual posts, Stories, Reels, Carousel posts, IGTV
+- Best Practices: Use high-quality visuals, include relevant hashtags (3-5), mix content formats, engage with audience
+- Content Ideas: Behind-the-scenes, before/after transformations, day-in-the-life, product showcases, educational carousels, motivational quotes, trending challenges
+
+YOUTUBE:
+- Content Types: Long-form videos, Shorts, Live streams, Tutorials
+- Best Practices: Create compelling thumbnails, include timestamps, use end screens, optimize descriptions
+- Content Ideas: Detailed tutorials, product reviews, behind-the-scenes vlogs, Q&A sessions, industry insights, collaboration videos
+
+TWITTER:
+- Content Types: Tweets, Threads, Polls, Spaces
+- Best Practices: Keep tweets concise, use trending hashtags, engage in conversations, share valuable insights
+- Content Ideas: Quick tips, industry commentary, behind-the-scenes, engaging questions, detailed threads, trending topics
+
+FACEBOOK:
+- Content Types: Posts, Stories, Live videos, Groups
+- Best Practices: Create longer posts, use Facebook Live, share community content, include media
+- Content Ideas: Community updates, behind-the-scenes, live Q&A, product launches, testimonials, educational content
+
+LINKEDIN:
+- Content Types: Posts, Articles, Newsletters, Live streams
+- Best Practices: Share professional insights, write thought leadership, engage with industry discussions
+- Content Ideas: Industry insights, career advice, professional achievements, thought leadership, industry news, networking
+
+TIKTOK:
+- Content Types: Short videos, Trending challenges, Duets, Lives
+- Best Practices: Create short engaging videos (15-60 seconds), use trending sounds, participate in challenges
+- Content Ideas: Trending challenges, quick tips, behind-the-scenes, day-in-the-life, product demos, comedy content
+
+THREADS:
+- Content Types: Posts, Conversations, Community engagement
+- Best Practices: Write longer thoughtful posts, engage in conversations, share personal experiences
+- Content Ideas: Personal thoughts, community discussions, behind-the-scenes, industry commentary, personal stories
+
+OUTPUT FORMAT:
+Create a JSON structure with this exact format:
+{
+  "plan": [
+    {
+      "day": 1,
+      "date": "Day 1",
+      "posts": [
+        {
+          "platform": "Platform Name",
+          "contentIdea": "Specific content idea with details",
+          "contentType": "Type of content (post, video, story, etc.)",
+          "description": "Detailed description of what to create",
+          "hashtags": ["relevant", "hashtags", "for", "this", "content"],
+          "tips": "Specific tips for creating this content"
+        }
+      ]
+    }
+  ]
+}
+
+IMPORTANT:
+- Make content ideas specific and actionable
+- Consider the creator's content type and description
+- Ensure variety across different days
+- Focus on engagement and value for the audience
+- Make sure content ideas are realistic and achievable
+- Include specific details about what to create, not just general topics
+
+Generate ${numberOfDays} days of content ideas that will help this creator grow their presence on ${platforms.join(', ')} while staying true to their ${contentType} niche.`;
+
+    // Call Gemini API
+    const url = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=' + apiKey;
+    
+    const requestBody = {
+      contents: [
+        {
+          parts: [
+            {
+              text: prompt
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.8,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 3000,
+      }
+    };
+
+    const response = await axios.post(url, requestBody, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    
+    const generatedText = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 'No content plan generated.';
+    
+    // Try to parse the JSON response
+    let plan;
+    try {
+      // Extract JSON from the response (in case there's extra text)
+      const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        plan = JSON.parse(jsonMatch[0]);
+      } else {
+        plan = JSON.parse(generatedText);
+      }
+    } catch (error) {
+      console.error('Failed to parse Gemini response:', error);
+      // Fallback to generated plan
+      plan = generateFallbackPlan(numberOfDays, platforms, contentType);
+    }
+    
+    res.json({ 
+      plan: plan.plan || plan,
+      rawResponse: generatedText,
+      message: 'Content plan generated successfully' 
+    });
+  } catch (error) {
+    console.error('Content planning error:', error);
+    res.status(500).json({ 
+      message: 'Failed to generate content plan',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Fallback plan generator
+function generateFallbackPlan(numberOfDays: number, platforms: string[], contentType: string): any {
+  const plan = [];
+  
+  for (let day = 1; day <= numberOfDays; day++) {
+    const dayPlan = {
+      day,
+      date: `Day ${day}`,
+      posts: []
+    };
+    
+    platforms.forEach(platform => {
+      const post = {
+        platform: platform.charAt(0).toUpperCase() + platform.slice(1),
+        contentIdea: `Create engaging ${contentType} content for ${platform}`,
+        contentType: 'post',
+        description: `Day ${day} content focusing on your ${contentType} niche`,
+        hashtags: ['content', 'socialmedia', 'creator'],
+        tips: `Focus on creating valuable content that resonates with your audience`
+      };
+      dayPlan.posts.push(post);
+    });
+    
+    plan.push(dayPlan);
+  }
+  
+  return { plan };
+}
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend server is running' });
