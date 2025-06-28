@@ -35,13 +35,16 @@ import {
   ChevronRight,
   PenTool,
   Mail,
-  Linkedin
+  Linkedin,
+  Moon,
+  Sun
 } from "lucide-react";
 import LoginModal from "../components/shared/LoginModal";
 import ayaanImg from "../assets/team/ayaan.jpg";
 import dhruvImg from "../assets/team/dhruv.jpeg";
 import prarabdhImg from "../assets/team/Prarabdh.jpeg";
 import shivangiImg from "../assets/team/Shivangi.png";
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function Homepage() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
@@ -53,6 +56,7 @@ export default function Homepage() {
   });
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginMode, setLoginMode] = useState<'login' | 'register'>('login');
+  const { isDark, toggleTheme } = useTheme();
 
   const testimonials = [
     {
@@ -196,17 +200,23 @@ export default function Homepage() {
       {/* Auth Buttons - top right */}
       <div className="fixed top-6 right-6 z-40 flex items-center space-x-4">
         <Button
+          variant="ghost"
+          className="p-2 rounded-full border border-gray-300 bg-white"
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+        >
+          {isDark ? <Sun className="h-5 w-5 text-yellow-400" /> : <Moon className="h-5 w-5 text-blue-600" />}
+        </Button>
+        <Button
           variant="outline"
-          className="border-blue-600 text-blue-600 bg-white hover:bg-blue-50 font-semibold px-6 py-2 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          className="border-blue-600 text-blue-600 bg-white hover:bg-blue-50 font-semibold px-6 py-2"
           onClick={() => { setLoginMode('login'); setShowLoginModal(true); }}
-          aria-label="Open login modal"
         >
           Login
         </Button>
         <Button
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2"
           onClick={() => { setLoginMode('register'); setShowLoginModal(true); }}
-          aria-label="Open sign up modal"
         >
           Sign Up
         </Button>
@@ -232,11 +242,10 @@ export default function Homepage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
               <Button 
                 size="lg" 
-                className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-4 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                onClick={() => window.location.href = '/onboarding'}
-                aria-label="Get started with SocialMind for free"
+                className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-4"
+                onClick={() => { setLoginMode('login'); setShowLoginModal(true); }}
               >
-                Get Started Free
+                Get Started 
                 <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
               </Button>
               <Dialog>

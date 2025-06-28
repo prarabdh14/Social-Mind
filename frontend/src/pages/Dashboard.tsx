@@ -6,6 +6,7 @@ import { Badge } from "../components/ui/badge";
 import { postService, dashboardService } from "../services/api";
 import { Post, DashboardAnalytics, DashboardInsights, SocialMediaAccount } from "../types";
 import { useUser } from "../contexts/UserContext";
+import { useTheme } from '../contexts/ThemeContext';
 import { 
   TrendingUp, 
   Users, 
@@ -19,9 +20,10 @@ import {
   PenTool,
   Loader2
 } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 
 export default function Dashboard() {
-  const { user } = useUser();
+  const { user, logout } = useUser();
   const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
@@ -30,6 +32,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { isDark } = useTheme();
 
   const fetchDashboardData = async () => {
     setAnalyticsLoading(true);
@@ -151,26 +154,53 @@ export default function Dashboard() {
     },
   ] : [];
 
+  // Mock data for charts
+  const reachData = [
+    { date: '2024-06-01', value: 1200 },
+    { date: '2024-06-02', value: 1500 },
+    { date: '2024-06-03', value: 1700 },
+    { date: '2024-06-04', value: 1600 },
+    { date: '2024-06-05', value: 2000 },
+    { date: '2024-06-06', value: 2200 },
+    { date: '2024-06-07', value: 2500 },
+  ];
+  const postStatusData = [
+    { name: 'Posted', value: 12 },
+    { name: 'Scheduled', value: 7 },
+    { name: 'Draft', value: 4 },
+    { name: 'Failed', value: 2 },
+  ];
+  const COLORS = ['#4ECDC4', '#5C7CFA', '#FFD166', '#FF6B6B'];
+
   return (
-    <div className="space-y-6" role="main" aria-label="Dashboard">
+    <div className="space-y-6 bg-white dark:bg-gray-900 min-h-screen" role="main" aria-label="Dashboard">
       {/* Welcome Section */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Welcome back, {user?.fullName || 'User'}!
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-gray-600 dark:text-gray-300 mt-1">
             Here's what's happening with your social media today.
           </p>
         </div>
-        <Button 
-          className="bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" 
-          onClick={handleCreate}
-          aria-label="Schedule a new post"
-        >
-          <Calendar className="h-4 w-4 mr-2" aria-hidden="true" />
-          Schedule New Post
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" 
+            onClick={handleCreate}
+            aria-label="Schedule a new post"
+          >
+            <Calendar className="h-4 w-4 mr-2" aria-hidden="true" />
+            Schedule New Post
+          </Button>
+          <Button
+            className="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg focus:ring-2 focus:ring-red-400 focus:ring-offset-2"
+            onClick={() => { logout(); navigate('/'); }}
+            aria-label="Logout"
+          >
+            Logout
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -184,40 +214,79 @@ export default function Dashboard() {
         {analyticsLoading ? (
           // Loading skeleton for metrics
           Array.from({ length: 4 }).map((_, index) => (
-            <Card key={index} className="hover:shadow-md transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
+            <Card key={index} className="hover:shadow-md transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
-                <div className="h-4 w-4 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20 animate-pulse"></div>
+                <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
               </CardHeader>
               <CardContent>
-                <div className="h-8 bg-gray-200 rounded w-16 animate-pulse mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div>
+                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16 animate-pulse mb-2"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-24 animate-pulse"></div>
               </CardContent>
             </Card>
           ))
         ) : (
           metrics.map((metric) => (
-            <Card key={metric.title} className="hover:shadow-md transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
+            <Card key={metric.title} className="hover:shadow-md transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-300 flex items-center gap-2">
+                  <metric.icon className="h-5 w-5 text-blue-500 dark:text-blue-300" />
                   {metric.title}
-                </CardTitle>
-                <metric.icon className="h-4 w-4 text-blue-600" aria-hidden="true" />
+                </span>
+                <span className={`text-xs font-semibold ${metric.trend === 'up' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{metric.change}</span>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{metric.value}</div>
-                <p className={`text-xs flex items-center mt-1 ${
-                  metric.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  <TrendingUp className={`h-3 w-3 mr-1 ${
-                    metric.trend === 'down' ? 'rotate-180' : ''
-                  }`} aria-hidden="true" />
-                  {metric.change} from last month
-                </p>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{metric.value}</div>
+                <div className="text-xs text-gray-400 dark:text-gray-300">{metric.trend === 'up' ? '▲' : '▼'} {/* metric.engagement */}</div>
               </CardContent>
             </Card>
           ))
         )}
+      </div>
+
+      {/* Analytics Charts Row */}
+      <div className="flex flex-col lg:flex-row gap-8 mt-8">
+        {/* Line Chart */}
+        <div className="flex-1 bg-white dark:bg-gray-800 rounded-xl shadow p-6 flex flex-col">
+          <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Total Reach (Last 7 Days)</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={reachData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }} style={{ background: isDark ? '#1a202c' : '#fff' }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#444' : '#eee'} />
+              <XAxis dataKey="date" tick={{ fontSize: 12, fill: isDark ? '#fff' : '#333' }} stroke={isDark ? '#fff' : '#333'} />
+              <YAxis tick={{ fontSize: 12, fill: isDark ? '#fff' : '#333' }} stroke={isDark ? '#fff' : '#333'} />
+              <Tooltip contentStyle={{ background: isDark ? '#222' : '#fff', color: isDark ? '#fff' : '#333' }} />
+              <Legend wrapperStyle={{ color: isDark ? '#fff' : '#333' }} />
+              <Line type="monotone" dataKey="value" name="Reach" stroke="#4ECDC4" strokeWidth={3} dot={{ r: 5 }} activeDot={{ r: 8 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        {/* Donut Chart */}
+        <div className="flex-1 bg-white dark:bg-gray-800 rounded-xl shadow p-6 flex flex-col items-center justify-center">
+          <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Post Status Distribution</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart style={{ background: isDark ? '#1a202c' : '#fff' }}>
+              <Pie
+                data={postStatusData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={70}
+                outerRadius={110}
+                fill="#8884d8"
+                paddingAngle={3}
+                labelLine={false}
+                label={({ name, percent }) => `${name}`}
+              >
+                {postStatusData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={{ background: isDark ? '#222' : '#fff', color: isDark ? '#fff' : '#333' }} />
+              <Legend wrapperStyle={{ color: isDark ? '#fff' : '#333' }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -327,22 +396,22 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="p-3 bg-white rounded-lg border border-blue-200">
+              <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200">
                 <p className="font-medium text-blue-900">{insights.bestTimeToPost.title}</p>
-                <p className="text-blue-700 text-sm">{insights.bestTimeToPost.description}</p>
+                <p className="text-blue-700 dark:text-gray-300 text-sm">{insights.bestTimeToPost.description}</p>
               </div>
-              <div className="p-3 bg-white rounded-lg border border-blue-200">
+              <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200">
                 <p className="font-medium text-blue-900">{insights.contentPerformance.title}</p>
-                <p className="text-blue-700 text-sm">{insights.contentPerformance.description}</p>
+                <p className="text-blue-700 dark:text-gray-300 text-sm">{insights.contentPerformance.description}</p>
               </div>
-              <div className="p-3 bg-white rounded-lg border border-blue-200">
+              <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200">
                 <p className="font-medium text-blue-900">{insights.trendingTopics.title}</p>
-                <p className="text-blue-700 text-sm">{insights.trendingTopics.description}</p>
+                <p className="text-blue-700 dark:text-gray-300 text-sm">{insights.trendingTopics.description}</p>
               </div>
               {insights.recommendations.length > 0 && (
-                <div className="p-3 bg-white rounded-lg border border-blue-200">
+                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200">
                   <p className="font-medium text-blue-900 mb-2">Recommendations</p>
-                  <ul className="text-blue-700 text-sm space-y-1">
+                  <ul className="text-blue-700 dark:text-gray-300 text-sm space-y-1">
                     {insights.recommendations.map((rec, index) => (
                       <li key={index} className="flex items-start">
                         <span className="text-blue-500 mr-2">•</span>

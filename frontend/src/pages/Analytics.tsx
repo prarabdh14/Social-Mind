@@ -1,10 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import { dashboardService, postService } from "../services/api";
-import { DashboardAnalytics, Post } from "../types";
 import { 
   BarChart3, 
   TrendingUp, 
@@ -23,33 +21,43 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 
 export default function Analytics() {
-  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState('7d'); // 7d, 30d, 90d
 
-  const fetchAnalyticsData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [analyticsData, postsData] = await Promise.all([
-        dashboardService.getAnalytics(),
-        postService.getPosts()
-      ]);
-      setAnalytics(analyticsData);
-      setPosts(postsData);
-    } catch (err) {
-      setError('Failed to fetch analytics data');
-      console.error('Analytics fetch error:', err);
-    } finally {
-      setLoading(false);
-    }
+  // MOCK DATA for analytics and posts
+  const analytics = {
+    metrics: {
+      totalReach: { value: '12,500', change: '+8%', trend: 'up' },
+      followers: { value: '2,300', change: '+3%', trend: 'up' },
+      engagement: { value: '1,200', change: '+5%', trend: 'up' },
+      comments: { value: '320', change: '+2%', trend: 'up' },
+    },
+    posts: {
+      total: 25,
+      posted: 15,
+      scheduled: 7,
+      draft: 2,
+      failed: 1,
+    },
+    socialAccounts: 4,
+    recentActivity: [],
+    reachHistory: [
+      { date: '2024-06-01', value: 1200 },
+      { date: '2024-06-02', value: 1500 },
+      { date: '2024-06-03', value: 1700 },
+      { date: '2024-06-04', value: 1600 },
+      { date: '2024-06-05', value: 2000 },
+      { date: '2024-06-06', value: 2200 },
+      { date: '2024-06-07', value: 2500 },
+    ],
   };
-
-  useEffect(() => {
-    fetchAnalyticsData();
-  }, [dateRange]);
+  const posts = [
+    { id: '1', content: 'Sample post 1', platform: 'Instagram', status: 'POSTED', scheduledAt: '2024-06-01T10:00:00Z' },
+    { id: '2', content: 'Sample post 2', platform: 'Twitter', status: 'SCHEDULED', scheduledAt: '2024-06-02T12:00:00Z' },
+    { id: '3', content: 'Sample post 3', platform: 'Facebook', status: 'DRAFT', scheduledAt: '2024-06-03T14:00:00Z' },
+    { id: '4', content: 'Sample post 4', platform: 'LinkedIn', status: 'FAILED', scheduledAt: '2024-06-04T16:00:00Z' },
+  ];
 
   // Generate weekly data from posts
   const generateWeeklyData = () => {
@@ -194,7 +202,7 @@ export default function Analytics() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
