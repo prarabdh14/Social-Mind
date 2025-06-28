@@ -20,8 +20,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, initialMode = 'login' 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+
   const [otp, setOtp] = useState('');
   const [showOtpInput, setShowOtpInput] = useState(false);
+
   const navigate = useNavigate();
   const { login } = useUser();
 
@@ -43,24 +45,42 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, initialMode = 'login' 
       if (isLogin) {
         // Sign in
         response = await authService.signIn({ email, password });
+
         
         // Check if OTP is required
         if ('requireOtp' in response && response.requireOtp) {
           setShowOtpInput(true);
           setIsLoading(false);
           return;
+
         }
       } else {
         // Register
         response = await authService.signUp({ email, password, name });
+        await login(response.token, response.user);
+        navigate('/dashboard');
+        onClose();
       }
-      
-      // Handle successful login/register
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await authService.verifyOtp(email, otp);
+
       await login(response.token, response.user);
       navigate('/dashboard');
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
+      setError(err instanceof Error ? err.message : 'Invalid OTP');
     } finally {
       setIsLoading(false);
     }
@@ -180,7 +200,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, initialMode = 'login' 
         )}
 
         {/* Email/Password Form */}
+
         {!showOtpInput ? (
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div>
@@ -258,6 +280,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, initialMode = 'login' 
               )}
             </button>
           </form>
+
         ) : (
           /* OTP Input Form */
           <form onSubmit={handleOTPSubmit} className="space-y-4">
@@ -274,6 +297,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, initialMode = 'login' 
               <input
                 type="text"
                 value={otp}
+
                 onChange={(e) => setOtp(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#4ECDC4] focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors duration-200 text-center text-lg tracking-widest"
                 placeholder="000000"
@@ -307,6 +331,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, initialMode = 'login' 
               className="w-full text-[#4ECDC4] hover:text-[#45b7af] transition-colors duration-300"
             >
               Back to Login
+
             </button>
           </form>
         )}

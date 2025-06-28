@@ -29,6 +29,7 @@ interface OTPResponse {
 interface OTPVerificationRequest {
   email: string;
   otp: string;
+
 }
 
 class AuthService {
@@ -48,7 +49,9 @@ class AuthService {
     localStorage.removeItem('token');
   }
 
+
   async signIn(credentials: SignInCredentials): Promise<AuthResponse | OTPResponse> {
+
     try {
       const response = await fetch(`${API_URL}/auth/signin`, {
         method: 'POST',
@@ -64,6 +67,7 @@ class AuthService {
       }
 
       const data = await response.json();
+
       
       // Check if OTP is required
       if (data.requireOtp) {
@@ -99,6 +103,7 @@ class AuthService {
       }
 
       const data = await response.json();
+
       if (!data.token || !data.user) {
         throw new Error('Invalid response from server');
       }
@@ -208,6 +213,21 @@ class AuthService {
 
   isAuthenticated(): boolean {
     return !!this.token;
+  }
+
+  async verifyOtp(email: string, otp: string): Promise<AuthResponse> {
+    const response = await fetch(`${API_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Invalid OTP');
+    }
+    const data = await response.json();
+    this.setToken(data.token);
+    return data;
   }
 }
 
