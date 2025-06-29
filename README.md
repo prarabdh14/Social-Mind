@@ -1,12 +1,29 @@
 # Social Mind
 
-**Social Mind** is a full-stack AI-powered social media management platform that helps creators, brands, and teams plan, schedule, analyze, and automate their social media presence across multiple platforms. It features advanced analytics, AI content generation, multi-platform scheduling, 2FA authentication, and a modern, responsive UI.
+**Social Mind** is a comprehensive, AI-powered social media management platform designed for creators, brands, agencies, and teams who want to streamline their social media presence across multiple platforms. Built with modern technologies and cutting-edge AI integration, Social Mind combines intelligent content generation, advanced analytics, automated scheduling, and team collaboration features into a single, powerful dashboard.
+
+## What Social Mind Does
+
+Social Mind transforms how you manage social media by providing:
+
+- **🤖 AI-Powered Content Creation**: Generate engaging captions, hashtags, and content ideas using Google's Gemini AI, tailored to your brand voice and platform-specific requirements
+- **📅 Intelligent Scheduling**: Automatically optimize posting times based on audience engagement patterns and platform-specific best practices
+- **📊 Advanced Analytics**: Track performance across all platforms with real-time insights, sentiment analysis, and predictive analytics
+- **🔄 Multi-Platform Management**: Seamlessly manage Instagram, Twitter, Facebook, LinkedIn, YouTube, and Threads from one unified interface
+- **🔐 Enterprise Security**: Two-factor authentication, role-based access control, and secure OAuth integrations
+- **👥 Team Collaboration**: Invite team members, assign roles, and manage permissions for scalable team workflows
+- **📧 Smart Notifications**: Automated email reminders, content scheduling confirmations, and performance reports
+- **🎨 Modern UI/UX**: Responsive, accessible design with dark/light theme support and intuitive navigation
+
+Whether you're a solo creator looking to grow your audience, a brand manager coordinating multiple campaigns, or an agency managing client accounts, Social Mind provides the tools and insights you need to succeed in today's competitive social media landscape.
 
 ---
 
 ## Table of Contents
 - [Features](#features)
 - [Architecture](#architecture)
+- [System Components](#system-components)
+- [Data Flow](#data-flow)
 - [Backend](#backend)
   - [Tech Stack](#backend-tech-stack)
   - [Key Features](#backend-key-features)
@@ -42,15 +59,215 @@
 
 ## Architecture
 
+### High-Level System Architecture
+
 ```
-Frontend (React + Vite + Tailwind)
-        |
-        | REST API
-        v
-Backend (Node.js + Express + Prisma + PostgreSQL)
-        |
-        v
-   Database (PostgreSQL)
+┌─────────────────────────────────────────────────────────────────┐
+│                        CLIENT LAYER                            │
+├─────────────────────────────────────────────────────────────────┤
+│  Web Browser (React SPA)  │  Mobile App (Future)  │  API Client │
+│  • User Interface         │  • Native Mobile      │  • Third-party│
+│  • State Management       │  • Push Notifications │  • Integrations│
+│  • Theme Management       │  • Offline Support    │  • Webhooks   │
+└─────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ HTTPS/REST API
+                                    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      API GATEWAY LAYER                         │
+├─────────────────────────────────────────────────────────────────┤
+│  Express.js Server                                              │
+│  • Request Routing        │  • Authentication    │  • Rate Limiting│
+│  • CORS Handling          │  • Input Validation  │  • Error Handling│
+│  • File Uploads           │  • Logging           │  • Security Headers│
+└─────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ Internal Communication
+                                    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     BUSINESS LOGIC LAYER                       │
+├─────────────────────────────────────────────────────────────────┤
+│  Authentication Service   │  Content Service     │  Analytics Service│
+│  • User Registration      │  • Post Management   │  • Metrics Collection│
+│  • OAuth Integration      │  • AI Content Gen    │  • Performance Tracking│
+│  • 2FA/OTP Handling       │  • Scheduling Logic  │  • Sentiment Analysis│
+│                           │                      │                │
+│  Email Service            │  Social Media Service│  Notification Service│
+│  • Welcome Emails         │  • Platform OAuth    │  • Real-time Alerts│
+│  • OTP Delivery           │  • Account Sync      │  • Scheduled Reminders│
+│  • Daily Reminders        │  • Content Publishing│  • Performance Reports│
+└─────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ Database Operations
+                                    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      DATA LAYER                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  Prisma ORM                                                      │
+│  • Database Abstraction   │  • Migration Management│  • Query Optimization│
+│  • Type Safety            │  • Schema Validation  │  • Connection Pooling│
+│                           │                      │                │
+│  PostgreSQL Database                                            │
+│  • User Data              │  • Content Data       │  • Analytics Data   │
+│  • Social Accounts        │  • Scheduling Data    │  • Audit Logs       │
+│  • Organizations          │  • AI Generated Data  │  • Performance Metrics│
+└─────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ External API Calls
+                                    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    EXTERNAL SERVICES LAYER                     │
+├─────────────────────────────────────────────────────────────────┤
+│  Google Services          │  Social Media APIs    │  AI Services        │
+│  • OAuth 2.0             │  • Instagram Graph API│  • Google Gemini API│
+│  • YouTube Data API      │  • Twitter API v2     │  • Content Generation│
+│  • Gmail API             │  • Facebook Graph API │  • Sentiment Analysis│
+│  • Google Cloud          │  • LinkedIn API       │  • Trend Analysis    │
+│                           │  • Threads API       │  • Optimization      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Component Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        FRONTEND ARCHITECTURE                   │
+├─────────────────────────────────────────────────────────────────┤
+│  App.tsx (Root Component)                                       │
+│  ├── ThemeProvider (Dark/Light Mode)                           │
+│  ├── UserProvider (Authentication State)                       │
+│  ├── Router (React Router v6)                                  │
+│  │   ├── Public Routes                                         │
+│  │   │   ├── Homepage (Landing Page)                           │
+│  │   │   ├── Login Modal (Authentication)                      │
+│  │   │   └── 404 (Not Found)                                   │
+│  │   └── Protected Routes                                      │
+│  │       ├── Layout (Sidebar + Header)                         │
+│  │       ├── Dashboard (Analytics + Overview)                  │
+│  │       ├── Content Planning (AI Content Generation)          │
+│  │       ├── Calendar (Visual Scheduling)                      │
+│  │       ├── Social Accounts (Platform Management)             │
+│  │       ├── Analytics (Detailed Reports)                      │
+│  │       ├── Settings (User Preferences)                       │
+│  │       └── Onboarding (New User Setup)                       │
+│  └── Toast Provider (Notifications)                            │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                        BACKEND ARCHITECTURE                    │
+├─────────────────────────────────────────────────────────────────┤
+│  Express.js Application (src/index.ts)                         │
+│  ├── Middleware Stack                                           │
+│  │   ├── CORS (Cross-Origin Resource Sharing)                  │
+│  │   ├── JSON Parser (Request Body Parsing)                    │
+│  │   ├── Multer (File Upload Handling)                         │
+│  │   └── Authentication (JWT Token Validation)                 │
+│  │                                                              │
+│  ├── Authentication Routes                                      │
+│  │   ├── POST /auth/signup (User Registration)                 │
+│  │   ├── POST /auth/signin (Login + OTP Trigger)               │
+│  │   ├── POST /auth/verify-otp (2FA Verification)              │
+│  │   ├── POST /auth/google (Google OAuth)                      │
+│  │   └── GET /auth/me (Current User)                           │
+│  │                                                              │
+│  ├── User Management Routes                                     │
+│  │   ├── GET /users/profile (Get Profile)                      │
+│  │   ├── PUT /users/profile (Update Profile)                   │
+│  │   └── DELETE /users (Account Deletion)                      │
+│  │                                                              │
+│  ├── Content Management Routes                                  │
+│  │   ├── POST /posts (Create Post)                             │
+│  │   ├── GET /posts (List Posts)                               │
+│  │   ├── PUT /posts/:id (Update Post)                          │
+│  │   └── DELETE /posts/:id (Delete Post)                       │
+│  │                                                              │
+│  ├── Analytics Routes                                           │
+│  │   ├── GET /dashboard/analytics (Dashboard Metrics)          │
+│  │   ├── GET /dashboard/insights (AI Insights)                 │
+│  │   └── GET /dashboard/accounts (Social Accounts)             │
+│  │                                                              │
+│  ├── AI Integration Routes                                      │
+│  │   ├── POST /ai/caption (Caption Generation)                 │
+│  │   └── POST /ai/content-plan (Content Planning)              │
+│  │                                                              │
+│  ├── Social Media Integration Routes                            │
+│  │   ├── GET /auth/youtube (YouTube OAuth)                     │
+│  │   ├── GET /auth/youtube/callback (OAuth Callback)           │
+│  │   ├── GET /auth/threads (Threads OAuth)                     │
+│  │   └── GET /auth/threads/callback (OAuth Callback)           │
+│  │                                                              │
+│  └── Utility Routes                                             │
+│      ├── GET /health (Health Check)                            │
+│      └── POST /test-email (Email Testing)                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## System Components
+
+### 1. Authentication System
+- **Multi-factor Authentication**: Email/password + OTP verification
+- **OAuth Integration**: Google, YouTube, Threads, and other social platforms
+- **JWT Token Management**: Secure session handling with refresh tokens
+- **Role-based Access Control**: Admin, Team Member, and Client roles
+
+### 2. AI Content Engine
+- **Google Gemini Integration**: Advanced AI for content generation
+- **Platform-specific Optimization**: Tailored content for each social platform
+- **Brand Voice Learning**: AI adapts to your content style and preferences
+- **Hashtag Optimization**: Smart hashtag suggestions based on trends and relevance
+
+### 3. Scheduling System
+- **Intelligent Timing**: AI-powered optimal posting time recommendations
+- **Multi-platform Coordination**: Synchronized posting across platforms
+- **Content Calendar**: Visual planning and management interface
+- **Automated Publishing**: Scheduled content delivery with error handling
+
+### 4. Analytics Engine
+- **Real-time Metrics**: Live performance tracking across all platforms
+- **Sentiment Analysis**: AI-powered content sentiment evaluation
+- **Performance Prediction**: Machine learning-based engagement forecasting
+- **Custom Reports**: Exportable analytics and performance insights
+
+### 5. Email Automation System
+- **Welcome Sequences**: Automated onboarding emails for new users
+- **OTP Delivery**: Secure two-factor authentication codes
+- **Daily Reminders**: Scheduled content notifications
+- **Performance Reports**: Automated weekly/monthly analytics summaries
+
+---
+
+## Data Flow
+
+### User Authentication Flow
+```
+1. User enters credentials → Frontend validation
+2. Backend receives request → Password verification
+3. OTP generated → Email service sends code
+4. User enters OTP → Backend verifies
+5. JWT token generated → User authenticated
+6. Token stored → Protected routes accessible
+```
+
+### Content Creation Flow
+```
+1. User uploads media → File processing
+2. AI analyzes content → Gemini API call
+3. Caption generated → Platform optimization
+4. User reviews/edits → Content refinement
+5. Schedule selected → Database storage
+6. Automated publishing → Social media APIs
+```
+
+### Analytics Collection Flow
+```
+1. Social media APIs → Data collection
+2. Real-time processing → Metric calculation
+3. Database storage → Historical data
+4. AI analysis → Insights generation
+5. Dashboard update → User visualization
+6. Report generation → Email delivery
 ```
 
 ---
